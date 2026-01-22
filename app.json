@@ -2,6 +2,7 @@
   "expo": {
     "name": "recipio-app",
     "slug": "recipio-app",
+    "scheme": "recipio",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,7 +14,22 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.recipio.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "음식 사진을 촬영하여 레시피에 추가하기 위해 카메라 접근이 필요합니다.",
+        "NSPhotoLibraryUsageDescription": "갤러리에서 음식 사진을 선택하여 레시피에 추가하기 위해 사진 라이브러리 접근이 필요합니다.",
+        "NSUserNotificationsUsageDescription": "새로운 레시피 추천과 요리 알림을 받기 위해 알림 권한이 필요합니다."
+      },
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,10 +37,26 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES",
+        "POST_NOTIFICATIONS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "color": "#ffffff"
+        }
+      ]
+    ]
   }
 }
