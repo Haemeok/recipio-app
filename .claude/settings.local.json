@@ -5,7 +5,13 @@
       "Bash(git remote add:*)",
       "Bash(git status:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nchore: add project configuration and path aliases\n\n- Add Claude project settings\n- Configure TypeScript path aliases for FSD architecture\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nchore: add project configuration and path aliases\n\n- Add Claude project settings\n- Configure TypeScript path aliases for FSD architecture\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "mcp__plugin_context7_context7__query-docs",
+      "Bash(npx tsc:*)",
+      "mcp__ide__getDiagnostics"
     ]
   }
 }

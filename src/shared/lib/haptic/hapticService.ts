@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import * as Haptics from "expo-haptics";
 import type { HapticStyle } from "@/shared/types";
 
@@ -19,8 +20,22 @@ const notificationTypeMap: Record<
   Error: Haptics.NotificationFeedbackType.Error,
 };
 
+const androidHapticMap: Record<HapticStyle, Haptics.AndroidHaptics> = {
+  Light: Haptics.AndroidHaptics.Clock_Tick,
+  Medium: Haptics.AndroidHaptics.Context_Click,
+  Heavy: Haptics.AndroidHaptics.Long_Press,
+  Success: Haptics.AndroidHaptics.Confirm,
+  Warning: Haptics.AndroidHaptics.Segment_Tick,
+  Error: Haptics.AndroidHaptics.Reject,
+};
+
 export const hapticService = {
   trigger: async (style: HapticStyle): Promise<void> => {
+    if (Platform.OS === "android") {
+      await Haptics.performAndroidHapticsAsync(androidHapticMap[style]);
+      return;
+    }
+
     if (style in impactStyleMap) {
       await Haptics.impactAsync(
         impactStyleMap[style as keyof typeof impactStyleMap]

@@ -13,13 +13,18 @@ export type BridgeMessageType =
   | "STORAGE"
   | "REQUEST_PUSH_TOKEN"
   | "PICK_IMAGE"
-  | "TAKE_PHOTO";
+  | "TAKE_PHOTO"
+  | "NOTIFICATION"
+  | "REQUEST_REVIEW";
 
 export type BridgeResponseType =
   | "PUSH_TOKEN"
   | "PUSH_TOKEN_ERROR"
   | "IMAGE_RESULT"
-  | "IMAGE_ERROR";
+  | "IMAGE_ERROR"
+  | "NOTIFICATION_STATUS"
+  | "REVIEW_RESULT"
+  | "REVIEW_ERROR";
 
 export type BridgeMessage<T = unknown> = {
   type: BridgeMessageType;
@@ -62,4 +67,22 @@ export type ImageResultPayload = {
 export type ImageErrorPayload = {
   error: string;
   code: "PERMISSION_DENIED" | "CANCELLED" | "UNKNOWN_ERROR";
+};
+
+export type NotificationStatusPayload = {
+  status: "granted" | "denied" | "not_determined";
+};
+
+export type NotificationPayload = {
+  action: "REQUEST_PERMISSION";
+};
+
+export type ReviewResultPayload = {
+  method: "native" | "store_url";
+  storeUrl?: string;
+};
+
+export type ReviewErrorPayload = {
+  error: string;
+  code: "NOT_AVAILABLE" | "REVIEW_FAILED" | "UNKNOWN_ERROR";
 };

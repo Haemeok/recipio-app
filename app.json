@@ -1,32 +1,36 @@
 {
   "expo": {
-    "name": "recipio-app",
+    "name": "레시피오",
     "slug": "recipio-app",
     "scheme": "recipio",
-    "version": "1.0.0",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.recipio.app",
-      "buildNumber": "1",
+      "bundleIdentifier": "kr.recipio.app",
+      "buildNumber": "4",
       "infoPlist": {
         "NSCameraUsageDescription": "음식 사진을 촬영하여 레시피에 추가하기 위해 카메라 접근이 필요합니다.",
         "NSPhotoLibraryUsageDescription": "갤러리에서 음식 사진을 선택하여 레시피에 추가하기 위해 사진 라이브러리 접근이 필요합니다.",
-        "NSUserNotificationsUsageDescription": "새로운 레시피 추천과 요리 알림을 받기 위해 알림 권한이 필요합니다."
+        "NSUserNotificationsUsageDescription": "새로운 레시피 추천과 요리 알림을 받기 위해 알림 권한이 필요합니다.",
+        "ITSAppUsesNonExemptEncryption": false
       },
+      "usesAppleSignIn": true,
       "privacyManifests": {
         "NSPrivacyAccessedAPITypes": [
           {
             "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
-            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+            "NSPrivacyAccessedAPITypeReasons": [
+              "CA92.1"
+            ]
           }
         ]
       }
@@ -34,16 +38,20 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#2d6a49"
       },
+      "package": "kr.recipio.app",
+      "versionCode": 5,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "READ_MEDIA_IMAGES",
         "POST_NOTIFICATIONS"
+      ],
+      "blockedPermissions": [
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO",
+        "READ_MEDIA_AUDIO"
       ]
     },
     "web": {
@@ -56,7 +64,13 @@
         {
           "color": "#ffffff"
         }
-      ]
-    ]
+      ],
+      "./plugins/withMaxSdkStoragePermission.js"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "8775a2d4-46ca-4383-9a18-d205723d2736"
+      }
+    }
   }
 }

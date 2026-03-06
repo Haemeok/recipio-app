@@ -11,6 +11,16 @@ export type PushTokenResult =
       code: "DEVICE_NOT_SUPPORTED" | "PERMISSION_DENIED" | "TOKEN_FETCH_FAILED";
     };
 
+export type NotificationStatus = "granted" | "denied" | "not_determined";
+
+export async function getNotificationStatus(): Promise<NotificationStatus> {
+  const { status } = await Notifications.getPermissionsAsync();
+
+  if (status === "granted") return "granted";
+  if (status === "denied") return "denied";
+  return "not_determined";
+}
+
 async function requestPermissions(): Promise<boolean> {
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
 

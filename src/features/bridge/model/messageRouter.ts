@@ -5,6 +5,8 @@ import {
   pushTokenHandler,
   pickImageHandler,
   takePhotoHandler,
+  notificationHandler,
+  reviewHandler,
   type BridgeHandler,
   type HandlerContext,
 } from "./handlers";
@@ -15,6 +17,8 @@ const handlers: Partial<Record<BridgeMessageType, BridgeHandler>> = {
   REQUEST_PUSH_TOKEN: pushTokenHandler,
   PICK_IMAGE: pickImageHandler,
   TAKE_PHOTO: takePhotoHandler,
+  NOTIFICATION: notificationHandler,
+  REQUEST_REVIEW: reviewHandler,
 };
 
 export const messageRouter = {
