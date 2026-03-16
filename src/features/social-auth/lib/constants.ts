@@ -10,4 +10,4 @@ export const SOCIAL_LOGIN_PATTERNS = [
 export const AUTH_REDIRECT_URL = 'recipio://auth/callback';
 
 // 앱 콜백 URL (WebView에서 로드할 경로)
-export const APP_CALLBACK_PATH = '/api/auth/app-callback';
+export const APP_CALLBACK_PATH = 'api/auth/app-callback';

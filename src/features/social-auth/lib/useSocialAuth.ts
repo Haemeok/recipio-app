@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, type RefObject } from 'react';
+import { useCallback, useState, useEffect, useRef, type RefObject } from 'react';
 import type { WebView } from 'react-native-webview';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
@@ -17,6 +17,28 @@ export const useSocialAuth = ({ webViewRef, baseUrl }: UseSocialAuthOptions) => 
     pendingProvider: null,
   });
 
+  // 콜백 이중 실행 방지 플래그
+  const callbackHandledRef = useRef(false);
+
+  const loadCallbackUrl = useCallback(
+    (code: string, source: string) => {
+      if (callbackHandledRef.current) {
+        console.log(`[SocialAuth] Callback already handled, ignoring from ${source}`);
+        return;
+      }
+      callbackHandledRef.current = true;
+
+      const callbackUrl = `${baseUrl}${APP_CALLBACK_PATH}?code=${code}`;
+      console.log(`[SocialAuth] Loading callback URL from ${source}:`, callbackUrl);
+
+      webViewRef.current?.injectJavaScript(`
+        window.location.href = '${callbackUrl}';
+        true;
+      `);
+    },
+    [webViewRef, baseUrl]
+  );
+
   /**
    * 소셜 로그인 URL 처리
    */
@@ -26,22 +48,15 @@ export const useSocialAuth = ({ webViewRef, baseUrl }: UseSocialAuthOptions) => 
         return;
       }
 
+      callbackHandledRef.current = false;
       setState({ isAuthenticating: true, pendingProvider: null });
 
       try {
         const result = await openAuthSession(url);
 
         if (result.success && result.code) {
-          // 인증 성공: WebView에서 app-callback URL 로드
-          const callbackUrl = `${baseUrl}${APP_CALLBACK_PATH}?code=${result.code}`;
-          console.log('[SocialAuth] Loading callback URL:', callbackUrl);
-
-          webViewRef.current?.injectJavaScript(`
-            window.location.href = '${callbackUrl}';
-            true;
-          `);
+          loadCallbackUrl(result.code, 'authSession');
         } else {
-          // 인증 실패/취소
           console.warn('[SocialAuth] Authentication failed:', result.error);
         }
       } catch (error) {
@@ -50,7 +65,7 @@ export const useSocialAuth = ({ webViewRef, baseUrl }: UseSocialAuthOptions) => 
         setState({ isAuthenticating: false, pendingProvider: null });
       }
     },
-    [webViewRef, baseUrl]
+    [loadCallbackUrl]
   );
 
   /**
@@ -60,28 +75,20 @@ export const useSocialAuth = ({ webViewRef, baseUrl }: UseSocialAuthOptions) => 
     const subscription = Linking.addEventListener('url', ({ url }) => {
       console.log('[SocialAuth] Deep link received:', url);
 
-      // recipio://auth/callback?code=xxx 형태
       if (url.includes('auth/callback')) {
-        // 시스템 브라우저 닫기
         WebBrowser.dismissBrowser();
 
         const { queryParams } = Linking.parse(url);
         const code = queryParams?.code as string | undefined;
 
         if (code && webViewRef.current) {
-          const callbackUrl = `${baseUrl}${APP_CALLBACK_PATH}?code=${code}`;
-          console.log('[SocialAuth] Loading callback URL from deep link:', callbackUrl);
-
-          webViewRef.current.injectJavaScript(`
-            window.location.href = '${callbackUrl}';
-            true;
-          `);
+          loadCallbackUrl(code, 'deepLink');
         }
       }
     });
 
     return () => subscription.remove();
-  }, [webViewRef, baseUrl]);
+  }, [webViewRef, loadCallbackUrl]);
 
   return {
     handleSocialLogin,

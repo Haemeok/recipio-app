@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, BackHandler } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, BackHandler, Platform, ToastAndroid } from 'react-native';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView, WebViewNavigation } from 'react-native-webview';
 import * as WebBrowser from 'expo-web-browser';
 import { useBridge } from '@/features/bridge';
@@ -58,23 +58,32 @@ const INJECTED_JAVASCRIPT = `
   })();
 `;
 
-export default function App() {
+function AppContent() {
+  const insets = useSafeAreaInsets();
   const webViewRef = useRef<WebView>(null);
   const { onMessage } = useBridge({ webViewRef });
   const { handleSocialLogin } = useSocialAuth({ webViewRef, baseUrl: mainUrl });
   const { isOffline } = useNetworkStatus();
   const [showOffline, setShowOffline] = useState(false);
 
-  // Android 뒤로가기: WebView 히스토리 back 처리, 첫 페이지에서는 앱 종료 차단
+  // Android 뒤로가기: WebView 히스토리 back 처리, 첫 페이지에서는 두 번 누르면 앱 종료
   const [canGoBack, setCanGoBack] = useState(false);
+  const lastBackPressed = useRef(0);
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
       if (canGoBack && webViewRef.current) {
         webViewRef.current.goBack();
-        return true; // WebView 뒤로가기 처리
+        return true;
       }
-      return true; // 첫 페이지에서는 앱 종료 차단
+      const now = Date.now();
+      if (now - lastBackPressed.current < 2000) {
+        BackHandler.exitApp();
+        return true;
+      }
+      lastBackPressed.current = now;
+      ToastAndroid.show('한 번 더 누르면 종료됩니다', ToastAndroid.SHORT);
+      return true;
     });
 
     return () => backHandler.remove();
@@ -132,38 +141,47 @@ export default function App() {
   };
 
   return (
+    <SafeAreaView
+      style={[styles.container, Platform.OS === 'android' && { paddingBottom: insets.bottom }]}
+      edges={['top']}
+    >
+      <StatusBar style="dark" />
+      {showOffline ? (
+        <OfflineScreen onRetry={handleRetry} />
+      ) : (
+        <WebView
+          ref={webViewRef}
+          allowsLinkPreview={false}
+          source={{ uri: mainUrl }}
+          cacheEnabled={false}
+          style={styles.webview}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          sharedCookiesEnabled={true}
+          thirdPartyCookiesEnabled={true}
+          allowsInlineMediaPlayback={true}
+          mediaPlaybackRequiresUserAction={false}
+          allowsBackForwardNavigationGestures={true}
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
+          onNavigationStateChange={(navState) => {
+            setCanGoBack(navState.canGoBack);
+            console.warn('LOADING URL: ' + navState.url);
+          }}
+          onMessage={onMessage}
+          injectedJavaScript={INJECTED_JAVASCRIPT}
+          onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
+          onLoadEnd={handleWebViewLoadEnd}
+        />
+      )}
+    </SafeAreaView>
+  );
+}
+
+export default function App() {
+  return (
     <SafeAreaProvider>
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <StatusBar style="dark" />
-        {showOffline ? (
-          <OfflineScreen onRetry={handleRetry} />
-        ) : (
-          <WebView
-            ref={webViewRef}
-            allowsLinkPreview={false}
-            source={{ uri: mainUrl }}
-            cacheEnabled={false}
-            style={styles.webview}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            sharedCookiesEnabled={true}
-            thirdPartyCookiesEnabled={true}
-            allowsInlineMediaPlayback={true}
-            mediaPlaybackRequiresUserAction={false}
-            allowsBackForwardNavigationGestures={true}
-            showsVerticalScrollIndicator={false}
-            showsHorizontalScrollIndicator={false}
-            onNavigationStateChange={(navState) => {
-              setCanGoBack(navState.canGoBack);
-              console.warn('LOADING URL: ' + navState.url);
-            }}
-            onMessage={onMessage}
-            injectedJavaScript={INJECTED_JAVASCRIPT}
-            onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
-            onLoadEnd={handleWebViewLoadEnd}
-          />
-        )}
-      </SafeAreaView>
+      <AppContent />
     </SafeAreaProvider>
   );
 }
