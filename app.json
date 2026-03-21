@@ -3,7 +3,7 @@
     "name": "레시피오",
     "slug": "recipio-app",
     "scheme": "recipio",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
