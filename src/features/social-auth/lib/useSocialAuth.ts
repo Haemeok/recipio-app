@@ -1,8 +1,9 @@
 import { useCallback, useState, useEffect, useRef, type RefObject } from 'react';
+import { Platform } from 'react-native';
 import type { WebView } from 'react-native-webview';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
-import { isSocialLoginUrl, openAuthBrowser } from './socialAuthService';
+import { isSocialLoginUrl, openAuthSession, openAuthBrowser } from './socialAuthService';
 import { APP_CALLBACK_PATH } from './constants';
 import type { SocialAuthState } from '../model/types';
 
@@ -53,8 +54,8 @@ export const useSocialAuth = ({ webViewRef, baseUrl }: UseSocialAuthOptions) => 
 
   /**
    * 소셜 로그인 URL 처리
-   * - openBrowserAsync로 Chrome Custom Tab 열기
-   * - 딥링크 수신은 아래 useEffect의 리스너가 담당
+   * iOS: openAuthSessionAsync — ASWebAuthenticationSession이 recipio:// 리다이렉트를 내부 캡처
+   * Android: openBrowserAsync — Chrome Custom Tab + 딥링크 리스너
    */
   const handleSocialLogin = useCallback(
     async (url: string): Promise<void> => {
@@ -65,28 +66,43 @@ export const useSocialAuth = ({ webViewRef, baseUrl }: UseSocialAuthOptions) => 
       callbackHandledRef.current = false;
       setState({ isAuthenticating: true, pendingProvider: null });
 
-      // 타임아웃: 2분 안에 딥링크가 안 오면 세션 정리
-      clearAuthTimeout();
-      timeoutRef.current = setTimeout(() => {
-        if (!callbackHandledRef.current) {
-          console.warn('[SocialAuth] Auth timeout - no callback received');
+      if (Platform.OS === 'ios') {
+        // iOS: openAuthSessionAsync가 결과를 직접 반환
+        try {
+          const result = await openAuthSession(url);
+
+          if (result.success && result.code) {
+            loadCallbackUrl(result.code, 'authSession');
+          } else {
+            console.warn('[SocialAuth] iOS auth failed:', result.error);
+            setState({ isAuthenticating: false, pendingProvider: null });
+          }
+        } catch (error) {
+          console.error('[SocialAuth] iOS auth error:', error);
           setState({ isAuthenticating: false, pendingProvider: null });
         }
-      }, AUTH_TIMEOUT_MS);
+      } else {
+        // Android: openBrowserAsync + 딥링크 리스너
+        clearAuthTimeout();
+        timeoutRef.current = setTimeout(() => {
+          if (!callbackHandledRef.current) {
+            console.warn('[SocialAuth] Auth timeout - no callback received');
+            setState({ isAuthenticating: false, pendingProvider: null });
+          }
+        }, AUTH_TIMEOUT_MS);
 
-      try {
-        await openAuthBrowser(url);
-        // openBrowserAsync는 브라우저가 닫힐 때 resolve됨
-        // 딥링크 콜백이 아직 안 왔으면 사용자가 직접 닫은 것
-        if (!callbackHandledRef.current) {
-          console.log('[SocialAuth] Browser closed without callback');
+        try {
+          await openAuthBrowser(url);
+          if (!callbackHandledRef.current) {
+            console.log('[SocialAuth] Browser closed without callback');
+            clearAuthTimeout();
+            setState({ isAuthenticating: false, pendingProvider: null });
+          }
+        } catch (error) {
+          console.error('[SocialAuth] Android auth error:', error);
           clearAuthTimeout();
           setState({ isAuthenticating: false, pendingProvider: null });
         }
-      } catch (error) {
-        console.error('[SocialAuth] Error:', error);
-        clearAuthTimeout();
-        setState({ isAuthenticating: false, pendingProvider: null });
       }
     },
     [clearAuthTimeout, loadCallbackUrl]

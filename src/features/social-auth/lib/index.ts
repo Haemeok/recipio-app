@@ -1,5 +1,5 @@
 export { useSocialAuth } from './useSocialAuth';
-export { isSocialLoginUrl, openAuthBrowser } from './socialAuthService';
+export { isSocialLoginUrl, openAuthSession, openAuthBrowser } from './socialAuthService';
 export {
   SOCIAL_LOGIN_PATTERNS,
   SOCIAL_LOGIN_PATTERNS_IOS,
