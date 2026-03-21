@@ -1,5 +1,12 @@
-// 소셜 로그인 URL 패턴 (백엔드 API 경로)
+// Android: 구글/애플만 외부 브라우저 (카카오/네이버는 WebView 내 처리 — 앱 전환 문제 방지)
+// 구글은 WebView 내 OAuth를 차단하므로 외부 브라우저 필수
 export const SOCIAL_LOGIN_PATTERNS = [
+  '/api/auth/login/google',
+  '/api/auth/login/apple',
+] as const;
+
+// iOS: 모든 소셜 로그인을 외부 브라우저로 처리 (기존 방식, 문제 없음)
+export const SOCIAL_LOGIN_PATTERNS_IOS = [
   '/api/auth/login/google',
   '/api/auth/login/naver',
   '/api/auth/login/kakao',

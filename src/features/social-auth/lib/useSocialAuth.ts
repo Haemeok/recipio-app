@@ -2,9 +2,11 @@ import { useCallback, useState, useEffect, useRef, type RefObject } from 'react'
 import type { WebView } from 'react-native-webview';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
-import { isSocialLoginUrl, openAuthSession } from './socialAuthService';
+import { isSocialLoginUrl, openAuthBrowser } from './socialAuthService';
 import { APP_CALLBACK_PATH } from './constants';
 import type { SocialAuthState } from '../model/types';
+
+const AUTH_TIMEOUT_MS = 120_000; // 2분
 
 interface UseSocialAuthOptions {
   webViewRef: RefObject<WebView | null>;
@@ -17,8 +19,15 @@ export const useSocialAuth = ({ webViewRef, baseUrl }: UseSocialAuthOptions) => 
     pendingProvider: null,
   });
 
-  // 콜백 이중 실행 방지 플래그
   const callbackHandledRef = useRef(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearAuthTimeout = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
 
   const loadCallbackUrl = useCallback(
     (code: string, source: string) => {
@@ -27,6 +36,7 @@ export const useSocialAuth = ({ webViewRef, baseUrl }: UseSocialAuthOptions) => 
         return;
       }
       callbackHandledRef.current = true;
+      clearAuthTimeout();
 
       const callbackUrl = `${baseUrl}${APP_CALLBACK_PATH}?code=${code}`;
       console.log(`[SocialAuth] Loading callback URL from ${source}:`, callbackUrl);
@@ -35,12 +45,16 @@ export const useSocialAuth = ({ webViewRef, baseUrl }: UseSocialAuthOptions) => 
         window.location.href = '${callbackUrl}';
         true;
       `);
+
+      setState({ isAuthenticating: false, pendingProvider: null });
     },
-    [webViewRef, baseUrl]
+    [webViewRef, baseUrl, clearAuthTimeout]
   );
 
   /**
    * 소셜 로그인 URL 처리
+   * - openBrowserAsync로 Chrome Custom Tab 열기
+   * - 딥링크 수신은 아래 useEffect의 리스너가 담당
    */
   const handleSocialLogin = useCallback(
     async (url: string): Promise<void> => {
@@ -51,25 +65,36 @@ export const useSocialAuth = ({ webViewRef, baseUrl }: UseSocialAuthOptions) => 
       callbackHandledRef.current = false;
       setState({ isAuthenticating: true, pendingProvider: null });
 
-      try {
-        const result = await openAuthSession(url);
+      // 타임아웃: 2분 안에 딥링크가 안 오면 세션 정리
+      clearAuthTimeout();
+      timeoutRef.current = setTimeout(() => {
+        if (!callbackHandledRef.current) {
+          console.warn('[SocialAuth] Auth timeout - no callback received');
+          setState({ isAuthenticating: false, pendingProvider: null });
+        }
+      }, AUTH_TIMEOUT_MS);
 
-        if (result.success && result.code) {
-          loadCallbackUrl(result.code, 'authSession');
-        } else {
-          console.warn('[SocialAuth] Authentication failed:', result.error);
+      try {
+        await openAuthBrowser(url);
+        // openBrowserAsync는 브라우저가 닫힐 때 resolve됨
+        // 딥링크 콜백이 아직 안 왔으면 사용자가 직접 닫은 것
+        if (!callbackHandledRef.current) {
+          console.log('[SocialAuth] Browser closed without callback');
+          clearAuthTimeout();
+          setState({ isAuthenticating: false, pendingProvider: null });
         }
       } catch (error) {
         console.error('[SocialAuth] Error:', error);
-      } finally {
+        clearAuthTimeout();
         setState({ isAuthenticating: false, pendingProvider: null });
       }
     },
-    [loadCallbackUrl]
+    [clearAuthTimeout, loadCallbackUrl]
   );
 
   /**
-   * 딥링크 리스너 (백업용 - openAuthSessionAsync가 자동 처리하지 못할 경우)
+   * 딥링크 리스너 — 유일한 인증 콜백 수신 경로
+   * recipio://auth/callback?code=... 를 수신하면 처리
    */
   useEffect(() => {
     const subscription = Linking.addEventListener('url', ({ url }) => {
@@ -83,12 +108,18 @@ export const useSocialAuth = ({ webViewRef, baseUrl }: UseSocialAuthOptions) => 
 
         if (code && webViewRef.current) {
           loadCallbackUrl(code, 'deepLink');
+        } else {
+          console.warn('[SocialAuth] Deep link received but no code found');
+          setState({ isAuthenticating: false, pendingProvider: null });
         }
       }
     });
 
-    return () => subscription.remove();
-  }, [webViewRef, loadCallbackUrl]);
+    return () => {
+      subscription.remove();
+      clearAuthTimeout();
+    };
+  }, [webViewRef, loadCallbackUrl, clearAuthTimeout]);
 
   return {
     handleSocialLogin,
