@@ -76,6 +76,7 @@ function AppContent() {
   const { handleSocialLogin } = useSocialAuth({ webViewRef, baseUrl: mainUrl });
   const { isOffline } = useNetworkStatus();
   const [showOffline, setShowOffline] = useState(false);
+  const [showDebugRefresh, setShowDebugRefresh] = useState(__DEV__);
 
   // Android 뒤로가기: WebView 히스토리 back 처리, 첫 페이지에서는 두 번 누르면 앱 종료
   const [canGoBack, setCanGoBack] = useState(false);
@@ -178,11 +179,20 @@ function AppContent() {
             </TouchableOpacity>
           </View>
         )}
+        {showDebugRefresh && (
+          <View style={styles.debugRefreshBar}>
+            <TouchableOpacity
+              onPress={() => webViewRef.current?.reload()}
+              style={styles.debugRefreshButton}
+            >
+              <Text style={styles.debugRefreshText}>🔄 새로고침</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         <WebView
           ref={webViewRef}
           allowsLinkPreview={false}
           source={{ uri: mainUrl }}
-          cacheEnabled={false}
           style={styles.webview}
           javaScriptEnabled={true}
           domStorageEnabled={true}
@@ -238,5 +248,19 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#333',
     fontWeight: '500',
+  },
+  debugRefreshBar: {
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    alignItems: 'center' as const,
+  },
+  debugRefreshButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+  },
+  debugRefreshText: {
+    fontSize: 14,
+    color: '#666',
   },
 });
