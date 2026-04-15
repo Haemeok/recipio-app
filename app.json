@@ -65,7 +65,18 @@
           "color": "#ffffff"
         }
       ],
-      "./plugins/withMaxSdkStoragePermission.js"
+      "./plugins/withMaxSdkStoragePermission.js",
+      [
+        "expo-share-intent",
+        {
+          "iosActivationRules": {
+            "NSExtensionActivationSupportsWebURLWithMaxCount": 1,
+            "NSExtensionActivationSupportsText": true
+          },
+          "androidIntentFilters": ["text/*"],
+          "androidMultiIntentFilters": []
+        }
+      ]
     ],
     "extra": {
       "eas": {
