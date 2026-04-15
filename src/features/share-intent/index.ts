@@ -1,1 +1,1 @@
-export { parseShareUrl } from './model';
+export { useShareIntent, ShareIntentProvider } from './lib/useShareIntent';
