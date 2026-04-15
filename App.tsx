@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, BackHandler, Platform, ToastAndroid, TouchableOpacity, Text, View } from 'react-native';
+import { StyleSheet, BackHandler, Platform, ToastAndroid, TouchableOpacity, Text, View, AppState } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView, WebViewNavigation } from 'react-native-webview';
 import * as WebBrowser from 'expo-web-browser';
@@ -9,6 +9,11 @@ import { useSocialAuth, isSocialLoginUrl } from '@/features/social-auth';
 import { getNotificationStatus } from '@/features/push-notification';
 import { useNetworkStatus } from '@/shared/lib/network';
 import { OfflineScreen } from '@/widgets/offline-screen';
+import CookieManager from '@preeternal/react-native-cookie-manager';
+import { cookieBackupService } from '@/shared/lib/cookie-backup';
+import { Alert } from 'react-native';
+import { useShareIntent, ShareIntentProvider } from '@/features/share-intent';
+import { WEBVIEW_BASE_URL } from '@/shared/config';
 
 // 외부 OAuth 로그인 페이지 감지 (뒤로가기 버튼 표시용)
 // 뒤로가기 버튼 표시할 OAuth 페이지 (네이버는 자체 뒤로가기 있으므로 제외)
@@ -33,7 +38,6 @@ const ALLOWED_EMBED_DOMAINS = [
   'ytimg.com',
 ];
 const feature17Url = 'https://capstone-frontend-9zya-git-feature-17-won-jins-projects.vercel.app/';
-const mainUrl = 'https://recipio.kr/';
 // 웹뷰 console.log를 네이티브로 전달하는 스크립트 (디버깅용)
 const INJECTED_JAVASCRIPT = `
   (function() {
@@ -73,7 +77,8 @@ function AppContent() {
   const insets = useSafeAreaInsets();
   const webViewRef = useRef<WebView>(null);
   const { onMessage } = useBridge({ webViewRef });
-  const { handleSocialLogin } = useSocialAuth({ webViewRef, baseUrl: mainUrl });
+  const { handleSocialLogin } = useSocialAuth({ webViewRef, baseUrl: WEBVIEW_BASE_URL });
+  const { shareTargetUrl, clearShareTarget } = useShareIntent();
   const { isOffline } = useNetworkStatus();
   const [showOffline, setShowOffline] = useState(false);
   const [showDebugRefresh, setShowDebugRefresh] = useState(__DEV__);
@@ -82,6 +87,29 @@ function AppContent() {
   const [canGoBack, setCanGoBack] = useState(false);
   const [currentUrl, setCurrentUrl] = useState('');
   const lastBackPressed = useRef(0);
+  const [cookiesRestored, setCookiesRestored] = useState(Platform.OS !== 'android');
+
+  // Android: 앱 시작 시 백업된 쿠키 복원 (WebView 로드 전에 실행)
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    cookieBackupService.restore().then(() => {
+      setCookiesRestored(true);
+    });
+  }, []);
+
+  // Android: 앱이 백그라운드로 갈 때 쿠키 백업
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'background' || state === 'inactive') {
+        cookieBackupService.backup();
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -165,7 +193,7 @@ function AppContent() {
       edges={['top']}
     >
       <StatusBar style="dark" />
-      {showOffline ? (
+      {!cookiesRestored ? null : showOffline ? (
         <OfflineScreen onRetry={handleRetry} />
       ) : (
         <>
@@ -187,12 +215,33 @@ function AppContent() {
             >
               <Text style={styles.debugRefreshText}>🔄 새로고침</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              onPress={async () => {
+                await CookieManager.clearAll();
+                Alert.alert('쿠키 삭제됨', 'WebView 쿠키가 초기화되었습니다.\n새로고침하면 로그인이 풀려야 정상입니다.');
+                webViewRef.current?.reload();
+              }}
+              style={styles.debugRefreshButton}
+            >
+              <Text style={[styles.debugRefreshText, { color: '#e74c3c' }]}>🍪 쿠키삭제</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={async () => {
+                await CookieManager.clearAll();
+                Alert.alert('쿠키 삭제 → 복원 테스트', '쿠키 초기화 후 백업에서 복원합니다.\n새로고침 후 로그인이 유지되면 성공!');
+                await cookieBackupService.restore();
+                webViewRef.current?.reload();
+              }}
+              style={styles.debugRefreshButton}
+            >
+              <Text style={[styles.debugRefreshText, { color: '#2ecc71' }]}>🔑 복원테스트</Text>
+            </TouchableOpacity>
           </View>
         )}
         <WebView
           ref={webViewRef}
           allowsLinkPreview={false}
-          source={{ uri: mainUrl }}
+          source={{ uri: shareTargetUrl ?? WEBVIEW_BASE_URL }}
           style={styles.webview}
           javaScriptEnabled={true}
           domStorageEnabled={true}
@@ -207,6 +256,11 @@ function AppContent() {
             setCanGoBack(navState.canGoBack);
             setCurrentUrl(navState.url);
             console.warn('LOADING URL: ' + navState.url);
+
+            // 공유 URL로 이동 완료 후 상태 초기화
+            if (shareTargetUrl && navState.url.includes('/recipes/new/youtube')) {
+              clearShareTarget();
+            }
           }}
           onMessage={onMessage}
           injectedJavaScript={INJECTED_JAVASCRIPT}
@@ -222,7 +276,9 @@ function AppContent() {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <AppContent />
+      <ShareIntentProvider>
+        <AppContent />
+      </ShareIntentProvider>
     </SafeAreaProvider>
   );
 }
@@ -253,7 +309,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    alignItems: 'center' as const,
+    flexDirection: 'row' as const,
+    justifyContent: 'center' as const,
+    gap: 12,
   },
   debugRefreshButton: {
     paddingVertical: 4,
