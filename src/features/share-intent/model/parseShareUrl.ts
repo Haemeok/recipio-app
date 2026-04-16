@@ -6,7 +6,10 @@
 export const parseShareUrl = (sharedText: string | undefined | null): string | null => {
   if (!sharedText) return null;
 
-  const urlPattern = /https?:\/\/[^\s]+/;
+  const urlPattern = /https?:\/\/[^\s<>"')\]]+/;
   const match = sharedText.match(urlPattern);
   return match ? match[0] : null;
 };
+
+export const isYouTubeUrl = (url: string): boolean =>
+  /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//i.test(url);

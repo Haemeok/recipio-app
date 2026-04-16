@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useShareIntentContext, ShareIntentProvider } from 'expo-share-intent';
-import { parseShareUrl } from '../model/parseShareUrl';
+import { parseShareUrl, isYouTubeUrl } from '../model/parseShareUrl';
 import { buildShareTargetUrl } from '@/shared/config';
 
 /**
@@ -21,7 +21,7 @@ export const useShareIntent = () => {
     const sharedText = shareIntent.text ?? shareIntent.webUrl;
     const url = parseShareUrl(sharedText);
 
-    if (url) {
+    if (url && isYouTubeUrl(url)) {
       setShareTargetUrl(buildShareTargetUrl(url));
     }
 

@@ -13,7 +13,7 @@ import CookieManager from '@preeternal/react-native-cookie-manager';
 import { cookieBackupService } from '@/shared/lib/cookie-backup';
 import { Alert } from 'react-native';
 import { useShareIntent, ShareIntentProvider } from '@/features/share-intent';
-import { WEBVIEW_BASE_URL } from '@/shared/config';
+import { WEBVIEW_BASE_URL, WEBVIEW_PATHS } from '@/shared/config';
 
 // 외부 OAuth 로그인 페이지 감지 (뒤로가기 버튼 표시용)
 // 뒤로가기 버튼 표시할 OAuth 페이지 (네이버는 자체 뒤로가기 있으므로 제외)
@@ -79,6 +79,15 @@ function AppContent() {
   const { onMessage } = useBridge({ webViewRef });
   const { handleSocialLogin } = useSocialAuth({ webViewRef, baseUrl: WEBVIEW_BASE_URL });
   const { shareTargetUrl, clearShareTarget } = useShareIntent();
+
+  useEffect(() => {
+    if (shareTargetUrl && webViewRef.current) {
+      webViewRef.current.injectJavaScript(
+        `window.location.href='${shareTargetUrl}'; true;`
+      );
+    }
+  }, [shareTargetUrl]);
+
   const { isOffline } = useNetworkStatus();
   const [showOffline, setShowOffline] = useState(false);
   const [showDebugRefresh, setShowDebugRefresh] = useState(__DEV__);
@@ -258,7 +267,7 @@ function AppContent() {
             console.warn('LOADING URL: ' + navState.url);
 
             // 공유 URL로 이동 완료 후 상태 초기화
-            if (shareTargetUrl && navState.url.includes('/recipes/new/youtube')) {
+            if (shareTargetUrl && navState.url.includes(WEBVIEW_PATHS.YOUTUBE_IMPORT)) {
               clearShareTarget();
             }
           }}
