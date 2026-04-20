@@ -88,8 +88,7 @@ function AppContent() {
     }
   }, [shareTargetUrl]);
 
-  const { isOffline } = useNetworkStatus();
-  const [showOffline, setShowOffline] = useState(false);
+  const { isOffline, refresh: refreshNetwork } = useNetworkStatus();
   const [showDebugRefresh, setShowDebugRefresh] = useState(__DEV__);
 
   // Android 뒤로가기: WebView 히스토리 back 처리, 첫 페이지에서는 두 번 누르면 앱 종료
@@ -138,15 +137,6 @@ function AppContent() {
 
     return () => backHandler.remove();
   }, [canGoBack]);
-
-  // 네트워크 상태 변경 시 오프라인 화면 표시
-  if (isOffline && !showOffline) {
-    setShowOffline(true);
-  }
-
-  const handleRetry = () => {
-    setShowOffline(false);
-  };
 
   // URL 로드 요청 처리
   const handleShouldStartLoadWithRequest = (request: WebViewNavigation): boolean => {
@@ -202,8 +192,8 @@ function AppContent() {
       edges={['top']}
     >
       <StatusBar style="dark" />
-      {!cookiesRestored ? null : showOffline ? (
-        <OfflineScreen onRetry={handleRetry} />
+      {!cookiesRestored ? null : isOffline ? (
+        <OfflineScreen onRetry={refreshNetwork} />
       ) : (
         <>
         {Platform.OS === 'android' && isExternalAuthPage(currentUrl) && (
