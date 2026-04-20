@@ -1,18 +1,10 @@
 import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
-import NetInfo from "@react-native-community/netinfo";
 
 interface OfflineScreenProps {
-  onRetry?: () => void;
+  onRetry: () => void;
 }
 
 export const OfflineScreen = ({ onRetry }: OfflineScreenProps) => {
-  const handleRetry = async () => {
-    const state = await NetInfo.fetch();
-    if (state.isConnected && state.isInternetReachable) {
-      onRetry?.();
-    }
-  };
-
   return (
     <View style={styles.container}>
       <Text style={styles.icon}>📡</Text>
@@ -20,7 +12,7 @@ export const OfflineScreen = ({ onRetry }: OfflineScreenProps) => {
       <Text style={styles.description}>
         네트워크 연결을 확인하고 다시 시도해주세요.
       </Text>
-      <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+      <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
         <Text style={styles.retryButtonText}>다시 시도</Text>
       </TouchableOpacity>
     </View>
