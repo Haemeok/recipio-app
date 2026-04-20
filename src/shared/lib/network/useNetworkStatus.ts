@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { AppState } from "react-native";
 import NetInfo, { NetInfoState } from "@react-native-community/netinfo";
 
 export const useNetworkStatus = () => {
@@ -6,6 +7,12 @@ export const useNetworkStatus = () => {
   const [isInternetReachable, setIsInternetReachable] = useState<
     boolean | null
   >(true);
+
+  const refresh = useCallback(async () => {
+    const state = await NetInfo.fetch();
+    setIsConnected(state.isConnected);
+    setIsInternetReachable(state.isInternetReachable);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state: NetInfoState) => {
@@ -18,9 +25,20 @@ export const useNetworkStatus = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        refresh();
+      }
+    });
+
+    return () => subscription.remove();
+  }, [refresh]);
+
   return {
     isConnected,
     isInternetReachable,
     isOffline: isConnected === false || isInternetReachable === false,
+    refresh,
   };
 };
