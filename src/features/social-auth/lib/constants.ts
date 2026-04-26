@@ -15,6 +15,3 @@ export const SOCIAL_LOGIN_PATTERNS_IOS = [
 
 // 딥링크 스킴 (app.json의 scheme과 일치해야 함)
 export const AUTH_REDIRECT_URL = 'recipio://auth/callback';
-
-// 앱 콜백 URL (WebView에서 로드할 경로)
-export const APP_CALLBACK_PATH = 'api/auth/app-callback';

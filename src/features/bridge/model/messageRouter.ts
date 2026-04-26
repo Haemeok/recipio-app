@@ -7,6 +7,7 @@ import {
   takePhotoHandler,
   notificationHandler,
   reviewHandler,
+  authStateHandler,
   type BridgeHandler,
   type HandlerContext,
 } from "./handlers";
@@ -19,6 +20,7 @@ const handlers: Partial<Record<BridgeMessageType, BridgeHandler>> = {
   TAKE_PHOTO: takePhotoHandler,
   NOTIFICATION: notificationHandler,
   REQUEST_REVIEW: reviewHandler,
+  AUTH_STATE_CHANGED: authStateHandler,
 };
 
 export const messageRouter = {

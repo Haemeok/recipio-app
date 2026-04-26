@@ -1,6 +1,6 @@
 import { useCallback, useMemo, type RefObject } from "react";
 import type { WebView, WebViewMessageEvent } from "react-native-webview";
-import type { BridgeResponseType } from "@/shared/types";
+import type { BridgeResponseType, ConsolePayload } from "@/shared/types";
 import type { HandlerContext } from "../model/handlers";
 import { messageRouter } from "../model";
 
@@ -42,7 +42,7 @@ export const useBridge = ({ webViewRef }: UseBridgeOptions) => {
 
       // 웹뷰 콘솔 로그는 바로 출력 (디버깅용)
       if (message.type === "CONSOLE") {
-        const { level, message: msg } = message.payload as { level: string; message: string };
+        const { level, message: msg } = message.payload as ConsolePayload;
         console.log(`[WebView:${level}]`, msg);
         return;
       }

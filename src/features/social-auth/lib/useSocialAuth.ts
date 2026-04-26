@@ -4,17 +4,18 @@ import type { WebView } from 'react-native-webview';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { isSocialLoginUrl, openAuthSession, openAuthBrowser } from './socialAuthService';
-import { APP_CALLBACK_PATH } from './constants';
 import type { SocialAuthState } from '../model/types';
+import { buildAppCallbackUrl } from '@/shared/config';
+import { generateDiagId, sendAuthDiag, type SendToWebViewFn } from '@/shared/lib/auth-diag';
 
 const AUTH_TIMEOUT_MS = 120_000; // 2분
 
 interface UseSocialAuthOptions {
   webViewRef: RefObject<WebView | null>;
-  baseUrl: string;
+  sendToWebView: SendToWebViewFn;
 }
 
-export const useSocialAuth = ({ webViewRef, baseUrl }: UseSocialAuthOptions) => {
+export const useSocialAuth = ({ webViewRef, sendToWebView }: UseSocialAuthOptions) => {
   const [state, setState] = useState<SocialAuthState>({
     isAuthenticating: false,
     pendingProvider: null,
@@ -22,6 +23,7 @@ export const useSocialAuth = ({ webViewRef, baseUrl }: UseSocialAuthOptions) => 
 
   const callbackHandledRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const diagIdRef = useRef<string | null>(null);
 
   const clearAuthTimeout = useCallback(() => {
     if (timeoutRef.current) {
@@ -39,8 +41,16 @@ export const useSocialAuth = ({ webViewRef, baseUrl }: UseSocialAuthOptions) => 
       callbackHandledRef.current = true;
       clearAuthTimeout();
 
-      const callbackUrl = `${baseUrl}${APP_CALLBACK_PATH}?code=${code}`;
+      const diagId = diagIdRef.current ?? generateDiagId();
+      const callbackUrl = buildAppCallbackUrl(code, diagId);
       console.log(`[SocialAuth] Loading callback URL from ${source}:`, callbackUrl);
+
+      sendAuthDiag(sendToWebView, {
+        phase: 'app-callback-load',
+        source: 'app-rn-social-auth',
+        diagId,
+        meta: { trigger: source },
+      });
 
       webViewRef.current?.injectJavaScript(`
         window.location.href = '${callbackUrl}';
@@ -49,7 +59,7 @@ export const useSocialAuth = ({ webViewRef, baseUrl }: UseSocialAuthOptions) => 
 
       setState({ isAuthenticating: false, pendingProvider: null });
     },
-    [webViewRef, baseUrl, clearAuthTimeout]
+    [webViewRef, clearAuthTimeout, sendToWebView]
   );
 
   /**
@@ -64,7 +74,15 @@ export const useSocialAuth = ({ webViewRef, baseUrl }: UseSocialAuthOptions) => 
       }
 
       callbackHandledRef.current = false;
+      diagIdRef.current = generateDiagId();
       setState({ isAuthenticating: true, pendingProvider: null });
+
+      sendAuthDiag(sendToWebView, {
+        phase: 'social-login-start',
+        source: 'app-rn-social-auth',
+        diagId: diagIdRef.current,
+        meta: { platform: Platform.OS },
+      });
 
       if (Platform.OS === 'ios') {
         // iOS: openAuthSessionAsync가 결과를 직접 반환
@@ -105,7 +123,7 @@ export const useSocialAuth = ({ webViewRef, baseUrl }: UseSocialAuthOptions) => 
         }
       }
     },
-    [clearAuthTimeout, loadCallbackUrl]
+    [clearAuthTimeout, loadCallbackUrl, sendToWebView]
   );
 
   /**
@@ -117,6 +135,18 @@ export const useSocialAuth = ({ webViewRef, baseUrl }: UseSocialAuthOptions) => 
       console.log('[SocialAuth] Deep link received:', url);
 
       if (url.includes('auth/callback')) {
+        const diagId = diagIdRef.current ?? generateDiagId();
+        if (!diagIdRef.current) {
+          diagIdRef.current = diagId;
+        }
+
+        sendAuthDiag(sendToWebView, {
+          phase: 'deep-link-received',
+          source: 'app-rn-social-auth',
+          diagId,
+          meta: { hasAuthCallback: true },
+        });
+
         WebBrowser.dismissBrowser();
 
         const { queryParams } = Linking.parse(url);
@@ -135,7 +165,7 @@ export const useSocialAuth = ({ webViewRef, baseUrl }: UseSocialAuthOptions) => 
       subscription.remove();
       clearAuthTimeout();
     };
-  }, [webViewRef, loadCallbackUrl, clearAuthTimeout]);
+  }, [webViewRef, loadCallbackUrl, clearAuthTimeout, sendToWebView]);
 
   return {
     handleSocialLogin,

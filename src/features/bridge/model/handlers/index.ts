@@ -4,4 +4,5 @@ export { pushTokenHandler } from "./pushTokenHandler";
 export { pickImageHandler, takePhotoHandler } from "./imageHandler";
 export { notificationHandler } from "./notificationHandler";
 export { reviewHandler } from "./reviewHandler";
+export { authStateHandler } from "./authStateHandler";
 export type { BridgeHandler, HandlerContext } from "./types";

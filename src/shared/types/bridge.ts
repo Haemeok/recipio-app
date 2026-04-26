@@ -15,7 +15,9 @@ export type BridgeMessageType =
   | "PICK_IMAGE"
   | "TAKE_PHOTO"
   | "NOTIFICATION"
-  | "REQUEST_REVIEW";
+  | "REQUEST_REVIEW"
+  | "AUTH_STATE_CHANGED"
+  | "CONSOLE";
 
 export type BridgeResponseType =
   | "PUSH_TOKEN"
@@ -24,7 +26,8 @@ export type BridgeResponseType =
   | "IMAGE_ERROR"
   | "NOTIFICATION_STATUS"
   | "REVIEW_RESULT"
-  | "REVIEW_ERROR";
+  | "REVIEW_ERROR"
+  | "AUTH_DIAG";
 
 export type BridgeMessage<T = unknown> = {
   type: BridgeMessageType;
@@ -85,4 +88,20 @@ export type ReviewResultPayload = {
 export type ReviewErrorPayload = {
   error: string;
   code: "NOT_AVAILABLE" | "REVIEW_FAILED" | "UNKNOWN_ERROR";
+};
+
+export type AuthStatePayload = {
+  event: "login" | "refresh" | "logout";
+};
+
+export type ConsolePayload = {
+  level: "log" | "warn" | "error";
+  message: string;
+};
+
+export type AuthDiagPayload = {
+  phase: string;
+  source: string;
+  diagId: string;
+  meta?: Record<string, unknown>;
 };

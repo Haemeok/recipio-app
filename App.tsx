@@ -13,7 +13,8 @@ import CookieManager from '@preeternal/react-native-cookie-manager';
 import { cookieBackupService } from '@/shared/lib/cookie-backup';
 import { Alert } from 'react-native';
 import { useShareIntent, ShareIntentProvider } from '@/features/share-intent';
-import { WEBVIEW_BASE_URL, WEBVIEW_PATHS } from '@/shared/config';
+import { WEBVIEW_BASE_URL } from '@/shared/config';
+import { generateDiagId, sendAuthDiag } from '@/shared/lib/auth-diag';
 
 // 외부 OAuth 로그인 페이지 감지 (뒤로가기 버튼 표시용)
 // 뒤로가기 버튼 표시할 OAuth 페이지 (네이버는 자체 뒤로가기 있으므로 제외)
@@ -76,17 +77,33 @@ const INJECTED_JAVASCRIPT = `
 function AppContent() {
   const insets = useSafeAreaInsets();
   const webViewRef = useRef<WebView>(null);
-  const { onMessage } = useBridge({ webViewRef });
-  const { handleSocialLogin } = useSocialAuth({ webViewRef, baseUrl: WEBVIEW_BASE_URL });
+  const { onMessage, sendToWebView } = useBridge({ webViewRef });
+  const { handleSocialLogin } = useSocialAuth({
+    webViewRef,
+    sendToWebView,
+  });
   const { shareTargetUrl, clearShareTarget } = useShareIntent();
 
+  // WebView 첫 로드 완료 여부. cold-start 공유는 WebView가 아직 준비 전이라
+  // injectJavaScript가 소실되므로 준비되면 꺼내 쓸 수 있도록 ref에 대기시킨다.
+  const isWebViewReadyRef = useRef(false);
+  const pendingShareUrlRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (shareTargetUrl && webViewRef.current) {
+    if (!shareTargetUrl) return;
+
+    if (isWebViewReadyRef.current && webViewRef.current) {
+      // Warm share: 이미 떠 있는 WebView에 주입
       webViewRef.current.injectJavaScript(
-        `window.location.href='${shareTargetUrl}'; true;`
+        `window.location.href = ${JSON.stringify(shareTargetUrl)}; true;`
       );
+    } else {
+      // Cold start: 첫 로드 완료 시점에 주입하도록 대기
+      pendingShareUrlRef.current = shareTargetUrl;
     }
-  }, [shareTargetUrl]);
+
+    clearShareTarget();
+  }, [shareTargetUrl, clearShareTarget]);
 
   const { isOffline, refresh: refreshNetwork } = useNetworkStatus();
   const [showDebugRefresh, setShowDebugRefresh] = useState(__DEV__);
@@ -118,6 +135,22 @@ function AppContent() {
 
     return () => subscription.remove();
   }, []);
+
+  // 진단: foreground 복귀 시 WebView 쿠키 상태 스냅샷
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        sendAuthDiag(sendToWebView, {
+          phase: 'foreground-resume',
+          source: 'app-rn-appstate',
+          diagId: generateDiagId(),
+          meta: { platform: Platform.OS },
+        });
+      }
+    });
+
+    return () => subscription.remove();
+  }, [sendToWebView]);
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -171,8 +204,19 @@ function AppContent() {
     return false;
   };
 
-  // WebView 로드 완료 시 알림 권한 상태 전송
+  // WebView 로드 완료 시 알림 권한 상태 전송 + cold-start 공유 URL 대기분 처리
   const handleWebViewLoadEnd = async () => {
+    if (!isWebViewReadyRef.current) {
+      isWebViewReadyRef.current = true;
+      const pending = pendingShareUrlRef.current;
+      if (pending) {
+        pendingShareUrlRef.current = null;
+        webViewRef.current?.injectJavaScript(
+          `window.location.href = ${JSON.stringify(pending)}; true;`
+        );
+      }
+    }
+
     const status = await getNotificationStatus();
 
     const message = JSON.stringify({
@@ -240,7 +284,7 @@ function AppContent() {
         <WebView
           ref={webViewRef}
           allowsLinkPreview={false}
-          source={{ uri: shareTargetUrl ?? WEBVIEW_BASE_URL }}
+          source={{ uri: WEBVIEW_BASE_URL }}
           style={styles.webview}
           javaScriptEnabled={true}
           domStorageEnabled={true}
@@ -256,9 +300,23 @@ function AppContent() {
             setCurrentUrl(navState.url);
             console.warn('LOADING URL: ' + navState.url);
 
-            // 공유 URL로 이동 완료 후 상태 초기화
-            if (shareTargetUrl && navState.url.includes(WEBVIEW_PATHS.YOUTUBE_IMPORT)) {
-              clearShareTarget();
+            // 진단: auth 관련 네비게이션 phase 식별
+            const url = navState.url;
+            let authPhase: string | null = null;
+            if (url.includes('/api/auth/app-callback')) {
+              authPhase = 'webview-nav-app-callback';
+            } else if (url.includes('/api/auth/callback/')) {
+              authPhase = 'webview-nav-oauth-callback';
+            } else if (url === WEBVIEW_BASE_URL || url === `${WEBVIEW_BASE_URL}/`) {
+              authPhase = 'webview-nav-main';
+            }
+            if (authPhase) {
+              sendAuthDiag(sendToWebView, {
+                phase: authPhase,
+                source: 'app-rn-webview-nav',
+                diagId: generateDiagId(),
+                meta: { url, loading: navState.loading },
+              });
             }
           }}
           onMessage={onMessage}
