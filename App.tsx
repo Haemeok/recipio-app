@@ -317,12 +317,22 @@ function AppContent() {
               authPhase = 'webview-nav-main';
             }
             if (authPhase) {
+              const diagId = generateDiagId();
               sendAuthDiag(sendToWebView, {
                 phase: authPhase,
                 source: 'app-rn-webview-nav',
-                diagId: generateDiagId(),
+                diagId,
                 meta: { url, loading: navState.loading },
               });
+              // 로드 완료 후에만 스냅샷 (Set-Cookie 다 들어온 시점)
+              if (
+                !navState.loading &&
+                (authPhase === 'webview-nav-app-callback' || authPhase === 'webview-nav-main')
+              ) {
+                const trigger =
+                  authPhase === 'webview-nav-app-callback' ? 'post-app-callback' : 'post-login';
+                void emitCookieSnapshot(sendToWebView, { trigger, diagId });
+              }
             }
           }}
           onMessage={onMessage}
