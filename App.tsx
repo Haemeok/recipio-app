@@ -15,6 +15,7 @@ import { Alert } from 'react-native';
 import { useShareIntent, ShareIntentProvider } from '@/features/share-intent';
 import { WEBVIEW_BASE_URL } from '@/shared/config';
 import { generateDiagId, sendAuthDiag } from '@/shared/lib/auth-diag';
+import { emitCookieSnapshot } from '@/shared/lib/cookie-diag';
 
 // 외부 OAuth 로그인 페이지 감지 (뒤로가기 버튼 표시용)
 // 뒤로가기 버튼 표시할 OAuth 페이지 (네이버는 자체 뒤로가기 있으므로 제외)
@@ -140,11 +141,16 @@ function AppContent() {
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
+        const diagId = generateDiagId();
         sendAuthDiag(sendToWebView, {
           phase: 'foreground-resume',
           source: 'app-rn-appstate',
-          diagId: generateDiagId(),
+          diagId,
           meta: { platform: Platform.OS },
+        });
+        void emitCookieSnapshot(sendToWebView, {
+          trigger: 'foreground-resume',
+          diagId,
         });
       }
     });
