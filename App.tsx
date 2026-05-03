@@ -272,7 +272,13 @@ function AppContent() {
             </TouchableOpacity>
             <TouchableOpacity
               onPress={async () => {
-                await CookieManager.clearAll();
+                if (Platform.OS === 'ios') {
+                  // WKWebView가 실제로 보는 jar (useWebKit:true) + HTTPCookieStorage 둘 다 비워야 함
+                  await CookieManager.clearAll(true);
+                  await CookieManager.clearAll(false);
+                } else {
+                  await CookieManager.clearAll();
+                }
                 Alert.alert('쿠키 삭제됨', 'WebView 쿠키가 초기화되었습니다.\n새로고침하면 로그인이 풀려야 정상입니다.');
                 webViewRef.current?.reload();
               }}
@@ -282,9 +288,14 @@ function AppContent() {
             </TouchableOpacity>
             <TouchableOpacity
               onPress={async () => {
-                await CookieManager.clearAll();
+                if (Platform.OS === 'ios') {
+                  await CookieManager.clearAll(true);
+                  await CookieManager.clearAll(false);
+                } else {
+                  await CookieManager.clearAll();
+                }
                 Alert.alert('쿠키 삭제 → 복원 테스트', '쿠키 초기화 후 백업에서 복원합니다.\n새로고침 후 로그인이 유지되면 성공!');
-                await cookieBackupService.restore();
+                await cookieBackupService.restore({ send: sendToWebView });
                 webViewRef.current?.reload();
               }}
               style={styles.debugRefreshButton}
