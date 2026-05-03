@@ -443,3 +443,61 @@ grep '"diagId":"9622ae55"' /tmp/auth-diag-*.log
 - [ ] `src/shared/config/webview.ts`에 env 오버라이드를 코드로 남겼으면 원복 여부 결정 (남겨도 무해 — default 유지)
 - [ ] OAuth provider 콘솔에 임시 등록한 preview URL redirect 제거
 - [ ] 새 엔드포인트 `/api/auth/debug-cookie`, `/api/auth/diag`는 flag off면 404이므로 **유지 가능**
+
+---
+
+# 쿠키 진단 확장 (2026-05-03)
+
+플랜: `docs/superpowers/plans/2026-05-03-cookie-observability.md`
+
+기존 AUTH_DIAG 시스템이 fingerprint 기반으로 phase 전환만 잡았다면, 이 확장은 **각 시점에 jar 안에 어떤 쿠키가 어떤 속성으로 들어있는지**까지 캡처. 가설 A/B/C/D/E 분리 가능.
+
+## 추가된 phase
+
+| phase | source | 발생 시점 | 핵심 meta |
+|---|---|---|---|
+| `cookie-snapshot:foreground-resume` | `app-rn-cookie-diag` | AppState `active` | `cookies[]` (name/fp/expires/sessionOnly/secure/httpOnly/sourceJar) |
+| `cookie-snapshot:post-app-callback` | `app-rn-cookie-diag` | `/api/auth/app-callback` 로드 종료 후 | 동일 |
+| `cookie-snapshot:post-login` | `app-rn-cookie-diag` | 메인 URL 도착 후 | 동일 |
+| `cookie-snapshot:cold-start-after-restore` | `app-rn-cookie-diag` | Android cold start `restore()` 성공 직후 | 동일 |
+| `cookie-snapshot:periodic` | `app-rn-cookie-diag` | foreground 동안 N초 간격 (env: `EXPO_PUBLIC_COOKIE_DIAG_INTERVAL_MS`, default 60s) | 동일 |
+| `cookie-jar-divergence` | `app-rn-cookie-diag` | iOS에서 WK/HTTP jar 동일 이름 쿠키 fp가 다를 때 | `divergedNames[]` |
+| `cookie-mutation:backup` | `app-rn-cookie-backup` | `cookieBackupService.backup()` 직전 | `cookies[]` 또는 `result: no-cookies/error` |
+| `cookie-mutation:restore` | `app-rn-cookie-backup` | `cookieBackupService.restore()` 직전 | `cookies[]` 또는 `result: no-backup/restoring/error` |
+
+## 가설별 진단 매핑
+
+- **A. Torn state**: `cookie-mutation:backup` 시점에 token 쿠키 일부만 보이면 적중. 직후 `cookie-snapshot:foreground-resume` (다음 active)에서 짝이 다 들어오면 race window가 짧다는 보강 증거.
+- **B. httpOnly/expires 소실**: `cookie-mutation:backup` 또는 cold-start의 `cookie-mutation:restore`에서 `sessionOnly: true` 또는 `httpOnly: undefined`인 토큰 쿠키 발견 시 적중. 가장 직접적인 증거.
+- **C. Rotation + stale**: cold-start `cookie-mutation:restore`의 `refreshToken` fp ≠ 직전 세션의 마지막 `cookie-snapshot:periodic`/`foreground-resume`의 fp. 직후 첫 `/api/auth/refresh`가 401이면 confirm.
+- **D. Domain 불일치**: snapshot의 `domain` 필드가 서버 발급값과 다른지 확인 (서버 측 Set-Cookie domain은 Capstone-frontend `oauth-backend-setcookie` phase에 추가 필요).
+- **E. WK/HTTP divergence**: `cookie-jar-divergence` phase 발생 자체가 evidence.
+
+## 백업 서비스 — 제거 검토 안 함 (중요)
+
+운영 telemetry로 net-positive 입증 (백업 도입 전이 더 자주 풀림). 진단은 백업을 **유지한 채로** 잔존 원인을 찾기 위함. `token.md` 1순위 권고 ("백업 제거")는 historical thinking으로 취급.
+
+## 실기 검증 (Plan Task 10)
+
+EAS env 추가:
+```bash
+npx eas env:create --environment preview --name EXPO_PUBLIC_COOKIE_DIAG_INTERVAL_MS --value "60000"
+# 기존 EXPO_PUBLIC_AUTH_DIAGNOSTIC_ENABLED=true 도 활성화 상태여야 함
+```
+
+Android dev client 시나리오:
+1. 콜드 부팅 → Kakao 로그인 → 3분 사용 → 홈 90초 → 복귀 → 🍪 쿠키삭제 → 🔑 복원테스트 → reload
+2. `vercel logs <preview-url> --since 10m | grep "\[AUTH_DIAG\]" > /tmp/diag-android.log`
+
+iOS 시나리오:
+1. 위와 동일 + snapshot에 `sourceJar: wkwebview` / `httpcookiestorage` 둘 다 보이는지 확인
+2. `cookie-jar-divergence` phase 발생 여부 확인
+
+## Capstone-frontend 보완 필요 (별도 plan)
+
+- `document.cookie` 주기 dump (httpOnly 안 보이지만 client-readable cookie 변화 추적용)
+- `apiClient`의 401 감지를 Sentry breadcrumb + AUTH_DIAG POST로 (현재 console.log만)
+- `tokenRefreshFailed` 단계별 attribution (network/parse/store)
+- 서버 Set-Cookie 응답에 `expires/maxAge/sameSite/domain/path` attribute 별도 phase 로깅 (현재 fp만)
+- RN cookie-snapshot 수신 시 웹쪽 jar diff phase emit (가설 E의 cross-platform 확장)
+
