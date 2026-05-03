@@ -119,10 +119,15 @@ function AppContent() {
   useEffect(() => {
     if (Platform.OS !== 'android') return;
 
-    cookieBackupService.restore().then(() => {
+    cookieBackupService.restore({ send: sendToWebView }).then((restored) => {
       setCookiesRestored(true);
+      if (restored) {
+        void emitCookieSnapshot(sendToWebView, {
+          trigger: 'cold-start-after-restore',
+        });
+      }
     });
-  }, []);
+  }, [sendToWebView]);
 
   // Android: 앱이 백그라운드로 갈 때 쿠키 백업
   useEffect(() => {
@@ -130,12 +135,12 @@ function AppContent() {
 
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'background' || state === 'inactive') {
-        cookieBackupService.backup();
+        void cookieBackupService.backup({ send: sendToWebView });
       }
     });
 
     return () => subscription.remove();
-  }, []);
+  }, [sendToWebView]);
 
   // 진단: foreground 복귀 시 WebView 쿠키 상태 스냅샷
   useEffect(() => {
