@@ -1,5 +1,7 @@
 import type { AuthDiagPayload, BridgeResponseType } from "@/shared/types";
 
+export { tokenFingerprint } from "./fingerprint";
+
 const DIAG_PREFIX = "[AUTH_DIAG]";
 
 export const isAuthDiagEnabled = (): boolean =>
