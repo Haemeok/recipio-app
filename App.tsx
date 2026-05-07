@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Platform, TouchableOpacity, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { WebView, WebViewNavigation } from 'react-native-webview';
+import { WebView } from 'react-native-webview';
 import { useBridge } from '@/features/bridge';
 import { useSocialAuth } from '@/features/social-auth';
 import { createNavigationGate } from '@/features/webview-navigation';
@@ -17,8 +17,9 @@ import {
   WEBVIEW_BASE_URL,
   isExternalAuthPage,
 } from '@/shared/config';
-import { generateDiagId, sendAuthDiag, useForegroundResumeDiag } from '@/shared/lib/auth-diag';
-import { emitCookieSnapshot, useCookieSnapshotTimer } from '@/shared/lib/cookie-diag';
+import { useForegroundResumeDiag } from '@/shared/lib/auth-diag';
+import { useCookieSnapshotTimer } from '@/shared/lib/cookie-diag';
+import { useWebViewNavState } from '@/features/webview-nav-state';
 import { CONSOLE_BRIDGE_SCRIPT } from '@/shared/lib/console-bridge';
 import { useAndroidBackHandler } from '@/features/android-back';
 
@@ -57,10 +58,9 @@ function AppContent() {
   const { isOffline, refresh: refreshNetwork } = useNetworkStatus();
   const [showDebugRefresh, setShowDebugRefresh] = useState(__DEV__);
 
-  // Android 뒤로가기: WebView 히스토리 back 처리, 첫 페이지에서는 두 번 누르면 앱 종료
-  const [canGoBack, setCanGoBack] = useState(false);
-  const [currentUrl, setCurrentUrl] = useState('');
   const { cookiesRestored } = useCookieLifecycle({ sendToWebView });
+
+  const { canGoBack, currentUrl, onNavigationStateChange } = useWebViewNavState({ sendToWebView });
 
   useForegroundResumeDiag({ sendToWebView });
   useAndroidBackHandler({ webViewRef, canGoBack });
@@ -170,40 +170,7 @@ function AppContent() {
           allowsBackForwardNavigationGestures={true}
           showsVerticalScrollIndicator={false}
           showsHorizontalScrollIndicator={false}
-          onNavigationStateChange={(navState) => {
-            setCanGoBack(navState.canGoBack);
-            setCurrentUrl(navState.url);
-            console.warn('LOADING URL: ' + navState.url);
-
-            // 진단: auth 관련 네비게이션 phase 식별
-            const url = navState.url;
-            let authPhase: string | null = null;
-            if (url.includes('/api/auth/app-callback')) {
-              authPhase = 'webview-nav-app-callback';
-            } else if (url.includes('/api/auth/callback/')) {
-              authPhase = 'webview-nav-oauth-callback';
-            } else if (url === WEBVIEW_BASE_URL || url === `${WEBVIEW_BASE_URL}/`) {
-              authPhase = 'webview-nav-main';
-            }
-            if (authPhase) {
-              const diagId = generateDiagId();
-              sendAuthDiag(sendToWebView, {
-                phase: authPhase,
-                source: 'app-rn-webview-nav',
-                diagId,
-                meta: { url, loading: navState.loading },
-              });
-              // 로드 완료 후에만 스냅샷 (Set-Cookie 다 들어온 시점)
-              if (
-                !navState.loading &&
-                (authPhase === 'webview-nav-app-callback' || authPhase === 'webview-nav-main')
-              ) {
-                const trigger =
-                  authPhase === 'webview-nav-app-callback' ? 'post-app-callback' : 'post-login';
-                void emitCookieSnapshot(sendToWebView, { trigger, diagId });
-              }
-            }
-          }}
+          onNavigationStateChange={onNavigationStateChange}
           onMessage={onMessage}
           injectedJavaScript={CONSOLE_BRIDGE_SCRIPT}
           onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
