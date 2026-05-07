@@ -135,22 +135,24 @@ const handleWebViewLoadEnd = async () => {
 
 > 정확한 버전은 `npx expo install react-native-google-mobile-ads`가 SDK 54 호환 라인을 자동 선정. 14.x 라인이 SDK 54 지원하는 것으로 알려져 있으나, 실제 설치 시점에 확정.
 
-`app.json` plugins 배열 (예시 — 실제 ID는 구현 시 AdMob 콘솔에서 발급받아 채움):
+`app.json` plugins 배열:
 ```json
 [
   "react-native-google-mobile-ads",
   {
-    "iosAppId": "<AdMob 콘솔에서 발급된 iOS app ID>",
-    "androidAppId": "<AdMob 콘솔에서 발급된 Android app ID>",
+    "iosAppId": "ca-app-pub-3940256099942544~1458002511",
+    "androidAppId": "ca-app-pub-3940256099942544~3347511713",
     "user_tracking_usage_description": "맞춤 광고 노출을 위해 IDFA 사용 동의를 요청합니다.",
     "delay_app_measurement_init": true
   }
 ]
 ```
 
-**구현 prerequisite**: AdMob 콘솔(https://apps.admob.com)에서 iOS·Android 각각 앱을 등록해 app ID 두 개를 발급받는다. 이는 코드 변경 외 운영자 작업.
+**AdMob 계정·콘솔 등록 불필요**. 이 통합은 AdMob 광고 unit(`BannerAd`/`InterstitialAd` 등)을 일절 사용하지 않고, AdSense를 webview에서 띄우기 위한 SDK 등록 용도로만 GMA SDK를 사용한다.
 
-> `INTEGRATION_MANAGER=webview` meta-data가 APPLICATION_ID 검증을 우회시키므로 dummy ID로도 동작은 한다. 그러나 향후 Google이 검증을 강화할 가능성이 있고, AdMob 콘솔의 트래픽/수익 메트릭을 보려면 어차피 실제 ID가 필요하다 — **실제 ID 사용을 권장**.
+`INTEGRATION_MANAGER=webview` meta-data가 APPLICATION_ID 검증을 명시적으로 우회시키므로, plugin schema 충족용으로 위 값(Google이 공식 문서에서 제공하는 **테스트 app ID**)을 그대로 사용한다. 실제 광고 노출은 AdSense 측에서 일어나며, 이 ID는 SDK 초기화 시 형식 검증만 통과하면 된다.
+
+> 용어 정리: `react-native-google-mobile-ads`는 **Google Mobile Ads SDK**(=AdMob SDK)의 RN 바인딩. 라이브러리 이름이 그렇다는 것뿐이며, AdMob 광고 unit 사용을 의미하지 않는다. `MobileAds.registerWebView()`는 이 SDK의 메서드라 SDK 자체는 설치 필수.
 
 ## 웹(Capstone-frontend) 측 변경
 
