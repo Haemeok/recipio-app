@@ -16,10 +16,10 @@ interface UseCookieLifecycleResult {
   cookiesRestored: boolean;
 }
 
-// Android-only:
-//   - 콜드 스타트에 백업된 쿠키를 WebView 쿠키 jar로 복원
-//   - 백그라운드/inactive 전환 시 현재 쿠키를 백업
-// iOS는 sharedCookiesEnabled로 NSHTTPCookieStorage가 영속 → 명시적 복원 불필요.
+// Restore (cold start): Android만. iOS는 NSHTTPCookieStorage가 영속이라
+//   콜드스타트에 backup으로 덮어쓰면 stale 쿠키로 회귀할 위험.
+// Backup (background/inactive): iOS + Android 둘 다.
+//   iOS도 토큰 쿠키가 자연 손실되는 사례가 관측되어 안전망으로 backup 유지.
 export const useCookieLifecycle = ({
   sendToWebView,
 }: UseCookieLifecycleArgs): UseCookieLifecycleResult => {
@@ -39,10 +39,8 @@ export const useCookieLifecycle = ({
     });
   }, [sendToWebView]);
 
-  // AppState change: 백그라운드 전환 시 백업
+  // AppState change: 백그라운드 전환 시 백업 (iOS + Android)
   useEffect(() => {
-    if (Platform.OS !== 'android') return;
-
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'background' || state === 'inactive') {
         void cookieBackupService.backup({ send: sendToWebView });

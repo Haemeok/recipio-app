@@ -10,6 +10,10 @@
     },
     "preview": {
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_AUTH_DIAGNOSTIC_ENABLED": "true",
+        "EXPO_PUBLIC_COOKIE_DIAG_INTERVAL_MS": "60000"
+      },
       "ios": {
         "simulator": false
       }

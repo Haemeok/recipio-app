@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import CookieManager from '@preeternal/react-native-cookie-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -78,6 +79,24 @@ export const cookieBackupService = {
         return;
       }
 
+      // 토큰 쿠키가 없으면 backup skip — 이전에 토큰 포함된 좋은 backup을
+      // GA-only 같은 무의미한 backup으로 덮어쓰지 않기 위함.
+      const hasAuthToken =
+        Object.prototype.hasOwnProperty.call(cookies, 'accessToken') ||
+        Object.prototype.hasOwnProperty.call(cookies, 'refreshToken');
+      if (!hasAuthToken) {
+        console.log('[CookieBackup] No auth tokens — backup skipped (preserving previous)');
+        if (send) {
+          sendAuthDiag(send, {
+            phase: 'cookie-mutation:backup',
+            source: 'app-rn-cookie-backup',
+            diagId: generateDiagId(),
+            meta: { result: 'skipped-no-tokens', count: Object.keys(cookies).length },
+          });
+        }
+        return;
+      }
+
       if (send) {
         const summary = await summarizeCookies(cookies as Record<string, CookieEntry>);
         sendAuthDiag(send, {
@@ -137,7 +156,7 @@ export const cookieBackupService = {
       }
 
       for (const [name, cookie] of Object.entries(cookies)) {
-        await CookieManager.set(`https://${BACKUP_DOMAIN}`, {
+        const cookieData = {
           name,
           value: cookie.value,
           domain: cookie.domain || `.${BACKUP_DOMAIN}`,
@@ -145,7 +164,16 @@ export const cookieBackupService = {
           ...(cookie.expires && { expires: cookie.expires }),
           secure: cookie.secure ?? true,
           httpOnly: cookie.httpOnly ?? false,
-        });
+        };
+        if (Platform.OS === 'ios') {
+          // WKWebView jar(useWebKit:true) + HTTPCookieStorage 둘 다 set
+          // — clearAllCookies와 대칭. 둘 중 한쪽만 set하면 reload 시 401, 다음
+          // background→foreground 동기화 후에야 적용되는 race가 발생.
+          await CookieManager.set(`https://${BACKUP_DOMAIN}`, cookieData, true);
+          await CookieManager.set(`https://${BACKUP_DOMAIN}`, cookieData, false);
+        } else {
+          await CookieManager.set(`https://${BACKUP_DOMAIN}`, cookieData);
+        }
       }
 
       console.log('[CookieBackup] Restored', Object.keys(cookies).length, 'cookies');
