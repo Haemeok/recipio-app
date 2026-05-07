@@ -22,41 +22,7 @@ import {
 } from '@/shared/config';
 import { generateDiagId, sendAuthDiag } from '@/shared/lib/auth-diag';
 import { emitCookieSnapshot, useCookieSnapshotTimer } from '@/shared/lib/cookie-diag';
-
-// 웹뷰 console.log를 네이티브로 전달하는 스크립트 (디버깅용)
-const INJECTED_JAVASCRIPT = `
-  (function() {
-    const originalLog = console.log;
-    const originalWarn = console.warn;
-    const originalError = console.error;
-
-    console.log = function(...args) {
-      originalLog.apply(console, args);
-      window.ReactNativeWebView?.postMessage(JSON.stringify({
-        type: 'CONSOLE',
-        payload: { level: 'log', message: args.map(a => String(a)).join(' ') }
-      }));
-    };
-
-    console.warn = function(...args) {
-      originalWarn.apply(console, args);
-      window.ReactNativeWebView?.postMessage(JSON.stringify({
-        type: 'CONSOLE',
-        payload: { level: 'warn', message: args.map(a => String(a)).join(' ') }
-      }));
-    };
-
-    console.error = function(...args) {
-      originalError.apply(console, args);
-      window.ReactNativeWebView?.postMessage(JSON.stringify({
-        type: 'CONSOLE',
-        payload: { level: 'error', message: args.map(a => String(a)).join(' ') }
-      }));
-    };
-
-    true;
-  })();
-`;
+import { CONSOLE_BRIDGE_SCRIPT } from '@/shared/lib/console-bridge';
 
 function AppContent() {
   const insets = useSafeAreaInsets();
@@ -336,7 +302,7 @@ function AppContent() {
             }
           }}
           onMessage={onMessage}
-          injectedJavaScript={INJECTED_JAVASCRIPT}
+          injectedJavaScript={CONSOLE_BRIDGE_SCRIPT}
           onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
           onLoadEnd={handleWebViewLoadEnd}
         />
