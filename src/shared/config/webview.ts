@@ -34,3 +34,31 @@ if (__DEV__) {
     console.warn('[webview] buildAppCallbackUrl 파싱 실패:', e);
   }
 }
+
+// 외부 OAuth 페이지 (네이티브 floating back bar 표시 대상)
+// 네이버는 자체 뒤로가기 있으므로 제외.
+export const EXTERNAL_AUTH_DOMAINS = ['accounts.kakao.com'] as const;
+
+export const isExternalAuthPage = (url: string): boolean =>
+  EXTERNAL_AUTH_DOMAINS.some((domain) => url.includes(domain));
+
+// 내부 도메인 (WebView에서 그대로 로드)
+export const INTERNAL_DOMAINS = ['capstone-frontend', 'vercel.app', 'recipio.kr'] as const;
+
+// OAuth 로그인 과정 도메인 (WebView 안에서 처리)
+export const OAUTH_DOMAINS = [
+  'accounts.kakao.com',
+  'kauth.kakao.com',
+  'nid.naver.com',
+  'accounts.google.com',
+  'appleid.apple.com',
+] as const;
+
+// 임베딩 허용 도메인 (유튜브 등)
+export const ALLOWED_EMBED_DOMAINS = [
+  'youtube.com',
+  'youtu.be',
+  'youtube-nocookie.com',
+  'googlevideo.com',
+  'ytimg.com',
+] as const;

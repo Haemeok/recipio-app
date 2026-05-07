@@ -13,33 +13,16 @@ import CookieManager from '@preeternal/react-native-cookie-manager';
 import { cookieBackupService } from '@/shared/lib/cookie-backup';
 import { Alert } from 'react-native';
 import { useShareIntent, ShareIntentProvider } from '@/features/share-intent';
-import { WEBVIEW_BASE_URL } from '@/shared/config';
+import {
+  WEBVIEW_BASE_URL,
+  INTERNAL_DOMAINS,
+  OAUTH_DOMAINS,
+  ALLOWED_EMBED_DOMAINS,
+  isExternalAuthPage,
+} from '@/shared/config';
 import { generateDiagId, sendAuthDiag } from '@/shared/lib/auth-diag';
 import { emitCookieSnapshot, useCookieSnapshotTimer } from '@/shared/lib/cookie-diag';
 
-// 외부 OAuth 로그인 페이지 감지 (뒤로가기 버튼 표시용)
-// 뒤로가기 버튼 표시할 OAuth 페이지 (네이버는 자체 뒤로가기 있으므로 제외)
-const EXTERNAL_AUTH_DOMAINS = ['accounts.kakao.com'];
-
-const isExternalAuthPage = (url: string): boolean => {
-  return EXTERNAL_AUTH_DOMAINS.some(domain => url.includes(domain));
-};
-
-// 내부 도메인 (WebView에서 처리할 URL)
-const INTERNAL_DOMAINS = ['capstone-frontend', 'vercel.app', 'recipio.kr'];
-
-// OAuth 로그인 과정에서 WebView 안에서 처리해야 하는 도메인
-const OAUTH_DOMAINS = ['accounts.kakao.com', 'kauth.kakao.com', 'nid.naver.com', 'accounts.google.com', 'appleid.apple.com'];
-
-// 임베딩 허용 도메인 (WebView 내에서 로드)
-const ALLOWED_EMBED_DOMAINS = [
-  'youtube.com',
-  'youtu.be',
-  'youtube-nocookie.com',
-  'googlevideo.com',
-  'ytimg.com',
-];
-const feature17Url = 'https://capstone-frontend-9zya-git-feature-17-won-jins-projects.vercel.app/';
 // 웹뷰 console.log를 네이티브로 전달하는 스크립트 (디버깅용)
 const INJECTED_JAVASCRIPT = `
   (function() {
