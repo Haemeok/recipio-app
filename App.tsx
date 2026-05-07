@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Platform, TouchableOpacity, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,9 +9,8 @@ import { createNavigationGate } from '@/features/webview-navigation';
 import { getNotificationStatus } from '@/features/push-notification';
 import { useNetworkStatus } from '@/shared/lib/network';
 import { OfflineScreen } from '@/widgets/offline-screen';
-import CookieManager from '@preeternal/react-native-cookie-manager';
-import { cookieBackupService, useCookieLifecycle } from '@/shared/lib/cookie-backup';
-import { Alert } from 'react-native';
+import { DebugOverlay } from '@/widgets/debug-overlay';
+import { useCookieLifecycle } from '@/shared/lib/cookie-backup';
 import { useShareIntent, ShareIntentProvider } from '@/features/share-intent';
 import {
   WEBVIEW_BASE_URL,
@@ -56,7 +55,6 @@ function AppContent() {
   }, [shareTargetUrl, clearShareTarget]);
 
   const { isOffline, refresh: refreshNetwork } = useNetworkStatus();
-  const [showDebugRefresh, setShowDebugRefresh] = useState(__DEV__);
 
   const { cookiesRestored } = useCookieLifecycle({ sendToWebView });
 
@@ -114,48 +112,7 @@ function AppContent() {
             </TouchableOpacity>
           </View>
         )}
-        {showDebugRefresh && (
-          <View style={styles.debugRefreshBar}>
-            <TouchableOpacity
-              onPress={() => webViewRef.current?.reload()}
-              style={styles.debugRefreshButton}
-            >
-              <Text style={styles.debugRefreshText}>🔄 새로고침</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={async () => {
-                if (Platform.OS === 'ios') {
-                  // WKWebView가 실제로 보는 jar (useWebKit:true) + HTTPCookieStorage 둘 다 비워야 함
-                  await CookieManager.clearAll(true);
-                  await CookieManager.clearAll(false);
-                } else {
-                  await CookieManager.clearAll();
-                }
-                Alert.alert('쿠키 삭제됨', 'WebView 쿠키가 초기화되었습니다.\n새로고침하면 로그인이 풀려야 정상입니다.');
-                webViewRef.current?.reload();
-              }}
-              style={styles.debugRefreshButton}
-            >
-              <Text style={[styles.debugRefreshText, { color: '#e74c3c' }]}>🍪 쿠키삭제</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={async () => {
-                if (Platform.OS === 'ios') {
-                  await CookieManager.clearAll(true);
-                  await CookieManager.clearAll(false);
-                } else {
-                  await CookieManager.clearAll();
-                }
-                Alert.alert('쿠키 삭제 → 복원 테스트', '쿠키 초기화 후 백업에서 복원합니다.\n새로고침 후 로그인이 유지되면 성공!');
-                await cookieBackupService.restore({ send: sendToWebView });
-                webViewRef.current?.reload();
-              }}
-              style={styles.debugRefreshButton}
-            >
-              <Text style={[styles.debugRefreshText, { color: '#2ecc71' }]}>🔑 복원테스트</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        {__DEV__ && <DebugOverlay webViewRef={webViewRef} sendToWebView={sendToWebView} />}
         <WebView
           ref={webViewRef}
           allowsLinkPreview={false}
@@ -213,21 +170,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#333',
     fontWeight: '500',
-  },
-  debugRefreshBar: {
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    flexDirection: 'row' as const,
-    justifyContent: 'center' as const,
-    gap: 12,
-  },
-  debugRefreshButton: {
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-  },
-  debugRefreshText: {
-    fontSize: 14,
-    color: '#666',
   },
 });
