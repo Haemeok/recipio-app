@@ -3,9 +3,9 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, BackHandler, Platform, ToastAndroid, TouchableOpacity, Text, View, AppState } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView, WebViewNavigation } from 'react-native-webview';
-import * as WebBrowser from 'expo-web-browser';
 import { useBridge } from '@/features/bridge';
-import { useSocialAuth, isSocialLoginUrl } from '@/features/social-auth';
+import { useSocialAuth } from '@/features/social-auth';
+import { createNavigationGate } from '@/features/webview-navigation';
 import { getNotificationStatus } from '@/features/push-notification';
 import { useNetworkStatus } from '@/shared/lib/network';
 import { OfflineScreen } from '@/widgets/offline-screen';
@@ -15,9 +15,6 @@ import { Alert } from 'react-native';
 import { useShareIntent, ShareIntentProvider } from '@/features/share-intent';
 import {
   WEBVIEW_BASE_URL,
-  INTERNAL_DOMAINS,
-  OAUTH_DOMAINS,
-  ALLOWED_EMBED_DOMAINS,
   isExternalAuthPage,
 } from '@/shared/config';
 import { generateDiagId, sendAuthDiag } from '@/shared/lib/auth-diag';
@@ -132,38 +129,8 @@ function AppContent() {
     return () => backHandler.remove();
   }, [canGoBack]);
 
-  // URL 로드 요청 처리
-  const handleShouldStartLoadWithRequest = (request: WebViewNavigation): boolean => {
-    const { url } = request;
-
-    // 1. 소셜 로그인 URL → 시스템 브라우저로 처리
-    if (isSocialLoginUrl(url)) {
-      handleSocialLogin(url);
-      return false;
-    }
-
-    // 2. 내부 URL은 WebView에서 로드
-    const isInternal = INTERNAL_DOMAINS.some(domain => url.includes(domain));
-    if (isInternal || url.startsWith('about:') || url.startsWith('data:')) {
-      return true;
-    }
-
-    // 3. OAuth 로그인 도메인은 WebView에서 로드
-    const isOAuth = OAUTH_DOMAINS.some(domain => url.includes(domain));
-    if (isOAuth) {
-      return true;
-    }
-
-    // 4. 임베딩 허용 도메인 (유튜브 등)은 WebView에서 로드
-    const isAllowedEmbed = ALLOWED_EMBED_DOMAINS.some(domain => url.includes(domain));
-    if (isAllowedEmbed) {
-      return true;
-    }
-
-    // 5. 그 외 외부 URL은 인앱 브라우저로 열기
-    WebBrowser.openBrowserAsync(url);
-    return false;
-  };
+  // URL 로드 요청 처리 — createNavigationGate factory로 생성
+  const handleShouldStartLoadWithRequest = createNavigationGate({ handleSocialLogin });
 
   // WebView 로드 완료 시 알림 권한 상태 전송 + cold-start 공유 URL 대기분 처리
   const handleWebViewLoadEnd = async () => {
