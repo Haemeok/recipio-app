@@ -1,6 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Platform, TouchableOpacity, Text, View } from 'react-native';
+import { StyleSheet, Platform, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { useBridge } from '@/features/bridge';
@@ -10,6 +10,7 @@ import { getNotificationStatus } from '@/features/push-notification';
 import { useNetworkStatus } from '@/shared/lib/network';
 import { OfflineScreen } from '@/widgets/offline-screen';
 import { DebugOverlay } from '@/widgets/debug-overlay';
+import { FloatingBackBar } from '@/widgets/floating-back-bar';
 import { useCookieLifecycle } from '@/shared/lib/cookie-backup';
 import { useShareIntent, ShareIntentProvider } from '@/features/share-intent';
 import {
@@ -103,14 +104,7 @@ function AppContent() {
       ) : (
         <>
         {Platform.OS === 'android' && isExternalAuthPage(currentUrl) && (
-          <View style={styles.floatingBackBar}>
-            <TouchableOpacity
-              onPress={() => webViewRef.current?.goBack()}
-              style={styles.floatingBackButton}
-            >
-              <Text style={styles.floatingBackText}>← 돌아가기</Text>
-            </TouchableOpacity>
-          </View>
+          <FloatingBackBar onPress={() => webViewRef.current?.goBack()} />
         )}
         {__DEV__ && <DebugOverlay webViewRef={webViewRef} sendToWebView={sendToWebView} />}
         <WebView
@@ -157,18 +151,5 @@ const styles = StyleSheet.create({
   webview: {
     flex: 1,
   },
-  floatingBackBar: {
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  floatingBackButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  floatingBackText: {
-    fontSize: 15,
-    color: '#333',
-    fontWeight: '500',
-  },
+
 });
