@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, BackHandler, Platform, ToastAndroid, TouchableOpacity, Text, View, AppState } from 'react-native';
+import { StyleSheet, Platform, TouchableOpacity, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView, WebViewNavigation } from 'react-native-webview';
 import { useBridge } from '@/features/bridge';
@@ -20,6 +20,7 @@ import {
 import { generateDiagId, sendAuthDiag, useForegroundResumeDiag } from '@/shared/lib/auth-diag';
 import { emitCookieSnapshot, useCookieSnapshotTimer } from '@/shared/lib/cookie-diag';
 import { CONSOLE_BRIDGE_SCRIPT } from '@/shared/lib/console-bridge';
+import { useAndroidBackHandler } from '@/features/android-back';
 
 function AppContent() {
   const insets = useSafeAreaInsets();
@@ -59,29 +60,10 @@ function AppContent() {
   // Android 뒤로가기: WebView 히스토리 back 처리, 첫 페이지에서는 두 번 누르면 앱 종료
   const [canGoBack, setCanGoBack] = useState(false);
   const [currentUrl, setCurrentUrl] = useState('');
-  const lastBackPressed = useRef(0);
   const { cookiesRestored } = useCookieLifecycle({ sendToWebView });
 
   useForegroundResumeDiag({ sendToWebView });
-
-  useEffect(() => {
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (canGoBack && webViewRef.current) {
-        webViewRef.current.goBack();
-        return true;
-      }
-      const now = Date.now();
-      if (now - lastBackPressed.current < 2000) {
-        BackHandler.exitApp();
-        return true;
-      }
-      lastBackPressed.current = now;
-      ToastAndroid.show('한 번 더 누르면 종료됩니다', ToastAndroid.SHORT);
-      return true;
-    });
-
-    return () => backHandler.remove();
-  }, [canGoBack]);
+  useAndroidBackHandler({ webViewRef, canGoBack });
 
   // URL 로드 요청 처리 — createNavigationGate factory로 생성
   const handleShouldStartLoadWithRequest = createNavigationGate({ handleSocialLogin });
