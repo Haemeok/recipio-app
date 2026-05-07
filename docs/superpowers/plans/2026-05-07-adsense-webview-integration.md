@@ -2,6 +2,10 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **⚠️ SUPERSEDED 2026-05-07** — This plan assumed `MobileAds.registerWebView()` exists in `react-native-google-mobile-ads`. It does not (verified empirically against invertase/react-native-google-mobile-ads@16.3.3). The registration path is not viable without a custom native module. Tasks B2-B10 below are obsolete; B1 (package install) was reverted in commit `4f33e37`.
+>
+> See `docs/superpowers/plans/2026-05-07-app-tsx-decomposition-and-silent-drop.md` for the active implementation plan.
+
 **Goal:** Register recipio-app's WebView with the Google Mobile Ads SDK so AdSense loads policy-compliantly inside the app, eliminate the "white screen + external URL" environment-violation bug, and narrow the web-side gate so unsupported in-app browsers (KakaoTalk/FB/IG/Line) skip AdSense.
 
 **Architecture:** Three new modules in `src/shared/lib/ads/` (ATT service, webview registration, bootstrap orchestrator) wired via a single line in `App.tsx`'s first `onLoadEnd`. Native manifest fields are injected by the `react-native-google-mobile-ads` config plugin. On the web (sister repo `Capstone-frontend`), `isAdsEnabled()` gains a User-Agent blocklist so only known in-app browsers are blocked; SSR and CSR call sites both honor it.

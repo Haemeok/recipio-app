@@ -1,5 +1,11 @@
 # AdSense WebView 통합 설계
 
+> **⚠️ REVISED 2026-05-07** — This design assumed `MobileAds.registerWebView()` is callable via the `react-native-google-mobile-ads` package. Investigation during execution revealed that method does **not exist** in invertase/react-native-google-mobile-ads@16.3.3 (the de-facto standard RN binding); no PR/issue tracks adding it. The registerWebView path is therefore **not viable** for this RN repo without writing a custom Expo Module to bridge the native call (deferred — not justified by current traffic).
+>
+> Pivoted approach: do **not** attempt SDK registration. Instead silent-drop AdSense's environment-violation top-level navigations at the WebView navigation layer (5-line addition in `features/webview-navigation`). White-screen + external-URL bug is fixed. AdSense still loads in the WebView via the existing web-side script; fill rate is lower than registered baseline, to be measured and supplemented by Korean ad networks (Kakao AdFit, Coupang Partners) — those are operational decisions outside this spec.
+>
+> See `docs/superpowers/plans/2026-05-07-app-tsx-decomposition-and-silent-drop.md` for the implementation that supersedes the original plan.
+
 **작성일**: 2026-05-07
 **상태**: 합의됨, 구현 계획 작성 대기
 **관련 repo**: `recipio-app` (RN, 본 repo) + `Capstone-frontend` (웹, sister repo)
