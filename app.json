@@ -73,14 +73,10 @@
             "NSExtensionActivationSupportsWebURLWithMaxCount": 1,
             "NSExtensionActivationSupportsText": true
           },
-          "androidIntentFilters": [
-            "text/*"
-          ],
+          "androidIntentFilters": ["text/*"],
           "androidMultiIntentFilters": []
         }
-      ],
-      "react-native-google-mobile-ads",
-      "expo-tracking-transparency"
+      ]
     ],
     "extra": {
       "eas": {
