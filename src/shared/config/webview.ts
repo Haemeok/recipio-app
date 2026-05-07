@@ -1,5 +1,4 @@
-export const WEBVIEW_BASE_URL =
-  'https://capstone-frontend-9zya-git-feature-17-won-jins-projects.vercel.app';
+export const WEBVIEW_BASE_URL = 'https://recipio.kr';
 
 export const WEBVIEW_PATHS = {
   HOME: '/',
