@@ -38,3 +38,5 @@ export const sendAuthDiag = (
   console.log(DIAG_PREFIX, JSON.stringify(payload));
   sendToWebView("AUTH_DIAG", payload);
 };
+
+export { useForegroundResumeDiag } from './useForegroundResumeDiag';

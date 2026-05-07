@@ -17,7 +17,7 @@ import {
   WEBVIEW_BASE_URL,
   isExternalAuthPage,
 } from '@/shared/config';
-import { generateDiagId, sendAuthDiag } from '@/shared/lib/auth-diag';
+import { generateDiagId, sendAuthDiag, useForegroundResumeDiag } from '@/shared/lib/auth-diag';
 import { emitCookieSnapshot, useCookieSnapshotTimer } from '@/shared/lib/cookie-diag';
 import { CONSOLE_BRIDGE_SCRIPT } from '@/shared/lib/console-bridge';
 
@@ -62,26 +62,7 @@ function AppContent() {
   const lastBackPressed = useRef(0);
   const { cookiesRestored } = useCookieLifecycle({ sendToWebView });
 
-  // 진단: foreground 복귀 시 WebView 쿠키 상태 스냅샷
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') {
-        const diagId = generateDiagId();
-        sendAuthDiag(sendToWebView, {
-          phase: 'foreground-resume',
-          source: 'app-rn-appstate',
-          diagId,
-          meta: { platform: Platform.OS },
-        });
-        void emitCookieSnapshot(sendToWebView, {
-          trigger: 'foreground-resume',
-          diagId,
-        });
-      }
-    });
-
-    return () => subscription.remove();
-  }, [sendToWebView]);
+  useForegroundResumeDiag({ sendToWebView });
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
