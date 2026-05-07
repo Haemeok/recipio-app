@@ -10,7 +10,7 @@ import { getNotificationStatus } from '@/features/push-notification';
 import { useNetworkStatus } from '@/shared/lib/network';
 import { OfflineScreen } from '@/widgets/offline-screen';
 import CookieManager from '@preeternal/react-native-cookie-manager';
-import { cookieBackupService } from '@/shared/lib/cookie-backup';
+import { cookieBackupService, useCookieLifecycle } from '@/shared/lib/cookie-backup';
 import { Alert } from 'react-native';
 import { useShareIntent, ShareIntentProvider } from '@/features/share-intent';
 import {
@@ -60,34 +60,7 @@ function AppContent() {
   const [canGoBack, setCanGoBack] = useState(false);
   const [currentUrl, setCurrentUrl] = useState('');
   const lastBackPressed = useRef(0);
-  const [cookiesRestored, setCookiesRestored] = useState(Platform.OS !== 'android');
-
-  // Android: 앱 시작 시 백업된 쿠키 복원 (WebView 로드 전에 실행)
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-
-    cookieBackupService.restore({ send: sendToWebView }).then((restored) => {
-      setCookiesRestored(true);
-      if (restored) {
-        void emitCookieSnapshot(sendToWebView, {
-          trigger: 'cold-start-after-restore',
-        });
-      }
-    });
-  }, [sendToWebView]);
-
-  // Android: 앱이 백그라운드로 갈 때 쿠키 백업
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-
-    const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'background' || state === 'inactive') {
-        void cookieBackupService.backup({ send: sendToWebView });
-      }
-    });
-
-    return () => subscription.remove();
-  }, [sendToWebView]);
+  const { cookiesRestored } = useCookieLifecycle({ sendToWebView });
 
   // 진단: foreground 복귀 시 WebView 쿠키 상태 스냅샷
   useEffect(() => {
