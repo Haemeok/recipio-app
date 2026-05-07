@@ -1,8 +1,8 @@
 import { useRef, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Platform, View } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { WebView } from 'react-native-webview';
+import type { WebView } from 'react-native-webview';
 import { useBridge } from '@/features/bridge';
 import { useSocialAuth } from '@/features/social-auth';
 import { createNavigationGate } from '@/features/webview-navigation';
@@ -13,15 +13,12 @@ import { DebugOverlay } from '@/widgets/debug-overlay';
 import { FloatingBackBar } from '@/widgets/floating-back-bar';
 import { useCookieLifecycle } from '@/shared/lib/cookie-backup';
 import { useShareIntent, ShareIntentProvider } from '@/features/share-intent';
-import {
-  WEBVIEW_BASE_URL,
-  isExternalAuthPage,
-} from '@/shared/config';
+import { isExternalAuthPage } from '@/shared/config';
 import { useForegroundResumeDiag } from '@/shared/lib/auth-diag';
 import { useCookieSnapshotTimer } from '@/shared/lib/cookie-diag';
 import { useWebViewNavState } from '@/features/webview-nav-state';
-import { CONSOLE_BRIDGE_SCRIPT } from '@/shared/lib/console-bridge';
 import { useAndroidBackHandler } from '@/features/android-back';
+import { MainWebView } from '@/widgets/main-webview';
 
 function AppContent() {
   const insets = useSafeAreaInsets();
@@ -107,23 +104,10 @@ function AppContent() {
           <FloatingBackBar onPress={() => webViewRef.current?.goBack()} />
         )}
         {__DEV__ && <DebugOverlay webViewRef={webViewRef} sendToWebView={sendToWebView} />}
-        <WebView
+        <MainWebView
           ref={webViewRef}
-          allowsLinkPreview={false}
-          source={{ uri: WEBVIEW_BASE_URL }}
-          style={styles.webview}
-          javaScriptEnabled={true}
-          domStorageEnabled={true}
-          sharedCookiesEnabled={true}
-          thirdPartyCookiesEnabled={true}
-          allowsInlineMediaPlayback={true}
-          mediaPlaybackRequiresUserAction={false}
-          allowsBackForwardNavigationGestures={true}
-          showsVerticalScrollIndicator={false}
-          showsHorizontalScrollIndicator={false}
-          onNavigationStateChange={onNavigationStateChange}
           onMessage={onMessage}
-          injectedJavaScript={CONSOLE_BRIDGE_SCRIPT}
+          onNavigationStateChange={onNavigationStateChange}
           onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
           onLoadEnd={handleWebViewLoadEnd}
         />
@@ -148,8 +132,4 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
-  webview: {
-    flex: 1,
-  },
-
 });
