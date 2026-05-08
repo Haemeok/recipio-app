@@ -14,7 +14,7 @@ import { FloatingBackBar } from '@/widgets/floating-back-bar';
 import { useCookieLifecycle } from '@/shared/lib/cookie-backup';
 import { useShareIntent, ShareIntentProvider } from '@/features/share-intent';
 import { isExternalAuthPage } from '@/shared/config';
-import { useForegroundResumeDiag } from '@/shared/lib/auth-diag';
+import { isAuthDiagEnabled, useForegroundResumeDiag } from '@/shared/lib/auth-diag';
 import { useCookieSnapshotTimer } from '@/shared/lib/cookie-diag';
 import { useWebViewNavState } from '@/features/webview-nav-state';
 import { useAndroidBackHandler } from '@/features/android-back';
@@ -103,7 +103,9 @@ function AppContent() {
         {Platform.OS === 'android' && isExternalAuthPage(currentUrl) && (
           <FloatingBackBar onPress={() => webViewRef.current?.goBack()} />
         )}
-        {__DEV__ && <DebugOverlay webViewRef={webViewRef} sendToWebView={sendToWebView} />}
+        {(__DEV__ || isAuthDiagEnabled()) && (
+          <DebugOverlay webViewRef={webViewRef} sendToWebView={sendToWebView} />
+        )}
         <MainWebView
           ref={webViewRef}
           onMessage={onMessage}
