@@ -284,12 +284,20 @@ Expected: login 직후 약 1초 안에 cookie-mutation:backup 1회 발화.
 - WebView reload 후 메인 화면 정상 표시되는지 확인
 Expected: 로그인 유지 + 메인 콘텐츠 정상 로드.
 
-- [ ] **Step 6: Vercel 로그에서 cookie-mutation:restore 메타 검증**
+- [ ] **Step 6: Vercel 로그에서 restore 효과 검증 (중요: phase 분리)**
 
-터미널 B 로그에서 `phase":"cookie-mutation:restore` 라인 찾기. `meta.cookies[]` 안:
-- `accessToken` 항목: `secure: true`, `httpOnly: true`, `sessionOnly: false`
-- `refreshToken` 항목: 동일
-Expected: 위 세 필드 모두 정확. `sessionOnly: false`는 expires 채워졌다는 뜻 (= Task 1의 90일 forward-date 동작).
+**주의:** `cookie-mutation:restore` phase의 `meta.cookies[]`는 AsyncStorage **원본 데이터**를 그대로 dump한 것 (backup 시점에 attribute 없이 저장됐으므로 여기서도 `secure: false`, `httpOnly: false`, `sessionOnly: true`가 정상). 이 phase로는 Task 1의 override 효과를 **검증할 수 없다**. `summarizeCookies()` (cookieBackupService.ts:43-73)는 AsyncStorage에서 읽은 값 그대로 fingerprint만 떼는 함수이고, override는 그 후 `CookieManager.set()` 호출 시점에 일어나므로 native cookie jar를 다시 읽어야 효과가 보임.
+
+**진짜 verify 방법:** 복원테스트 후 WebView reload → 메인 화면 도달하면 `cookie-snapshot:post-login` 또는 60초 후 `cookie-snapshot:periodic` phase가 발화. 그 phase의 `meta.cookies[]`는 `nativeCookieSnapshot.ts`가 `CookieManager.get()`으로 native에서 다시 읽은 값. 여기서 검증:
+
+- `sourceJar: "android-default"` 인 항목 중 `accessToken` / `refreshToken` 찾기
+- `secure: true` ✓
+- `httpOnly: true` ✓
+- `sessionOnly: false` ✓ (expires 90일 후로 들어가 있음)
+
+만약 native가 attribute를 다시 잃어버려서 (cookie jar에서 다시 RFC6265 헤더 포맷으로 read해서) 여기서도 `secure: false`, `httpOnly: false`, `sessionOnly: true`로 보일 수도 있음. 그건 Android `webkit.CookieManager.getCookie()` API의 **read 한계**라 정상이며, override 자체는 동작하고 있는 것. 그 경우 다음 Step 7 (document.cookie)이 진짜 effective verification.
+
+Expected primary signal: Step 7 PASS = httpOnly 강제 적용됨. Step 6의 cookie-snapshot 메타는 보조 신호 (read 가능하면 보너스, 아니면 native 한계).
 
 - [ ] **Step 7: WebView document.cookie 검증 (httpOnly 동작 확인)**
 
