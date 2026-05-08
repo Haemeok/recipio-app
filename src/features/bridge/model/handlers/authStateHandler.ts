@@ -1,6 +1,6 @@
 import { cookieBackupService } from '@/shared/lib/cookie-backup';
 import type { AuthStatePayload, BridgeMessage } from '@/shared/types';
-import type { BridgeHandler } from './types';
+import type { BridgeHandler, HandlerContext } from './types';
 
 /**
  * 웹에서 인증 상태 변경 알림을 받아 쿠키를 백업/삭제
@@ -11,7 +11,10 @@ import type { BridgeHandler } from './types';
  * 참고: WebView 쿠키 자체는 웹 측에서 관리. 여기선 AsyncStorage 백업만 갱신/삭제.
  */
 export const authStateHandler: BridgeHandler<AuthStatePayload> = {
-  handle: async (message: BridgeMessage<AuthStatePayload>) => {
+  handle: async (
+    message: BridgeMessage<AuthStatePayload>,
+    context?: HandlerContext
+  ) => {
     const event = message.payload?.event;
 
     if (!event) {
@@ -23,7 +26,7 @@ export const authStateHandler: BridgeHandler<AuthStatePayload> = {
       case 'login':
       case 'refresh':
         console.log(`[AuthStateHandler] ${event} — backing up cookies`);
-        await cookieBackupService.backup();
+        await cookieBackupService.backup({ send: context?.sendToWebView });
         break;
 
       case 'logout':
