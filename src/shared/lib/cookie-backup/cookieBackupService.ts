@@ -11,6 +11,24 @@ import {
 const COOKIE_BACKUP_KEY = 'recipio_cookie_backup';
 const BACKUP_DOMAIN = 'recipio.kr';
 
+// Token 쿠키 식별 패턴 — cookie-diag/emit.ts:21과 일치 유지.
+// 이 패턴에 매치되는 쿠키엔 restore() 시 secure/httpOnly/expires를 강제 주입한다.
+const TOKEN_COOKIE_PATTERN = /token|session|auth/i;
+
+const TOKEN_RESTORE_EXPIRY_DAYS = 90;
+
+/**
+ * Native CookieManagerModule.kt parseDate가 받는 포맷:
+ *   yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ (ISO 8601 with timezone)
+ * Date.toISOString()은 'Z'로 끝나는데 SimpleDateFormat의 ZZZZZ는
+ * +00:00 형식만 받으므로 replace 한 단계 필요.
+ */
+const buildExpiryString = (daysFromNow: number): string => {
+  const d = new Date();
+  d.setDate(d.getDate() + daysFromNow);
+  return d.toISOString().replace('Z', '+00:00');
+};
+
 type CookieEntry = {
   value: string;
   domain?: string;
@@ -156,15 +174,24 @@ export const cookieBackupService = {
       }
 
       for (const [name, cookie] of Object.entries(cookies)) {
+        const isToken = TOKEN_COOKIE_PATTERN.test(name);
+
+        // Token 쿠키: native가 잃어버린 attribute 강제 보정.
+        // 비-token 쿠키: backup 시점 값 그대로 (secure/httpOnly가 명시적 true인 경우만 살림).
         const cookieData = {
           name,
           value: cookie.value,
           domain: cookie.domain || `.${BACKUP_DOMAIN}`,
           path: cookie.path || '/',
-          ...(cookie.expires && { expires: cookie.expires }),
-          secure: cookie.secure ?? true,
-          httpOnly: cookie.httpOnly ?? false,
+          ...(cookie.expires
+            ? { expires: cookie.expires }
+            : isToken
+              ? { expires: buildExpiryString(TOKEN_RESTORE_EXPIRY_DAYS) }
+              : {}),
+          secure: isToken ? true : cookie.secure === true,
+          httpOnly: isToken ? true : cookie.httpOnly === true,
         };
+
         if (Platform.OS === 'ios') {
           // WKWebView jar(useWebKit:true) + HTTPCookieStorage 둘 다 set
           // — clearAllCookies와 대칭. 둘 중 한쪽만 set하면 reload 시 401, 다음
