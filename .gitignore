@@ -40,3 +40,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# local scratch / analysis notes
+log*.md
+token.md
