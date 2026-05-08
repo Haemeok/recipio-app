@@ -47,7 +47,10 @@ export const useBridge = ({ webViewRef }: UseBridgeOptions) => {
         return;
       }
 
-      console.log("[Bridge] Message:", message.type, message.payload);
+      // HAPTIC은 매 탭마다 발화해 노이즈가 큼 — 디버깅용 로그에서 제외.
+      if (message.type !== "HAPTIC") {
+        console.log("[Bridge] Message:", message.type, message.payload);
+      }
       messageRouter.route(message, context);
     },
     [context]
