@@ -26,7 +26,10 @@ export const authStateHandler: BridgeHandler<AuthStatePayload> = {
       case 'login':
       case 'refresh':
         console.log(`[AuthStateHandler] ${event} — backing up cookies`);
-        await cookieBackupService.backup({ send: context?.sendToWebView });
+        await cookieBackupService.backup({
+          send: context?.sendToWebView,
+          trigger: event === 'login' ? 'web-event-login' : 'web-event-refresh',
+        });
         break;
 
       case 'logout':

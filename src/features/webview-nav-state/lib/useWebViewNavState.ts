@@ -64,7 +64,10 @@ export const useWebViewNavState = ({
       void emitCookieSnapshot(sendToWebView, { trigger, diagId });
       // AsyncStorage가 cookie jar의 거울이 되도록 즉시 backup.
       // web의 AUTH_STATE_CHANGED 이벤트가 오지 않아도 navigation 감지로 발화 — 안전망.
-      void cookieBackupService.backup({ send: sendToWebView });
+      void cookieBackupService.backup({
+        send: sendToWebView,
+        trigger: authPhase === 'webview-nav-app-callback' ? 'nav-app-callback' : 'nav-main',
+      });
     },
     [sendToWebView],
   );

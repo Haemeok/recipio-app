@@ -38,7 +38,15 @@ type CookieEntry = {
   httpOnly?: boolean;
 };
 
-type EmitOpts = { send?: SendToWebViewFn };
+type BackupTrigger =
+  | 'appstate-background'
+  | 'web-event-login'
+  | 'web-event-refresh'
+  | 'nav-app-callback'
+  | 'nav-main'
+  | 'debug-restore-test';
+
+type EmitOpts = { send?: SendToWebViewFn; trigger?: BackupTrigger };
 
 const summarizeCookies = async (
   cookies: Record<string, CookieEntry>
@@ -80,7 +88,7 @@ const summarizeCookies = async (
  * 진단 emit만 옵션으로 추가 — `send` 미지정 시 emit 생략.
  */
 export const cookieBackupService = {
-  backup: async ({ send }: EmitOpts = {}): Promise<void> => {
+  backup: async ({ send, trigger }: EmitOpts = {}): Promise<void> => {
     try {
       const cookies = await CookieManager.get(`https://${BACKUP_DOMAIN}`);
 
@@ -91,7 +99,7 @@ export const cookieBackupService = {
             phase: 'cookie-mutation:backup',
             source: 'app-rn-cookie-backup',
             diagId: generateDiagId(),
-            meta: { result: 'no-cookies' },
+            meta: { result: 'no-cookies', trigger },
           });
         }
         return;
@@ -109,7 +117,7 @@ export const cookieBackupService = {
             phase: 'cookie-mutation:backup',
             source: 'app-rn-cookie-backup',
             diagId: generateDiagId(),
-            meta: { result: 'skipped-no-tokens', count: Object.keys(cookies).length },
+            meta: { result: 'skipped-no-tokens', count: Object.keys(cookies).length, trigger },
           });
         }
         return;
@@ -121,7 +129,7 @@ export const cookieBackupService = {
           phase: 'cookie-mutation:backup',
           source: 'app-rn-cookie-backup',
           diagId: generateDiagId(),
-          meta: { result: 'written', count: summary.length, cookies: summary },
+          meta: { result: 'written', count: summary.length, cookies: summary, trigger },
         });
       }
 
@@ -134,7 +142,7 @@ export const cookieBackupService = {
           phase: 'cookie-mutation:backup',
           source: 'app-rn-cookie-backup',
           diagId: generateDiagId(),
-          meta: { result: 'error', error: String(error) },
+          meta: { result: 'error', error: String(error), trigger },
         });
       }
     }

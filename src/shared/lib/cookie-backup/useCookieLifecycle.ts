@@ -43,7 +43,7 @@ export const useCookieLifecycle = ({
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'background' || state === 'inactive') {
-        void cookieBackupService.backup({ send: sendToWebView });
+        void cookieBackupService.backup({ send: sendToWebView, trigger: 'appstate-background' });
       }
     });
 
