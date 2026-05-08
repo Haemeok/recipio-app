@@ -4,6 +4,7 @@ import type { WebViewNavigation } from 'react-native-webview';
 import { WEBVIEW_BASE_URL } from '@/shared/config';
 import { generateDiagId, sendAuthDiag, type SendToWebViewFn } from '@/shared/lib/auth-diag';
 import { emitCookieSnapshot } from '@/shared/lib/cookie-diag';
+import { cookieBackupService } from '@/shared/lib/cookie-backup';
 
 interface UseWebViewNavStateArgs {
   sendToWebView: SendToWebViewFn;
@@ -50,7 +51,7 @@ export const useWebViewNavState = ({
         meta: { url: navState.url, loading: navState.loading },
       });
 
-      // 로드 완료 후에만 스냅샷 (Set-Cookie 다 들어온 시점)
+      // 로드 완료 후에만 스냅샷 + backup (Set-Cookie 다 들어온 시점)
       if (navState.loading) return;
       if (
         authPhase !== 'webview-nav-app-callback' &&
@@ -61,6 +62,9 @@ export const useWebViewNavState = ({
       const trigger =
         authPhase === 'webview-nav-app-callback' ? 'post-app-callback' : 'post-login';
       void emitCookieSnapshot(sendToWebView, { trigger, diagId });
+      // AsyncStorage가 cookie jar의 거울이 되도록 즉시 backup.
+      // web의 AUTH_STATE_CHANGED 이벤트가 오지 않아도 navigation 감지로 발화 — 안전망.
+      void cookieBackupService.backup({ send: sendToWebView });
     },
     [sendToWebView],
   );
