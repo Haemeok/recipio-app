@@ -27,7 +27,8 @@ export type BridgeResponseType =
   | "NOTIFICATION_STATUS"
   | "REVIEW_RESULT"
   | "REVIEW_ERROR"
-  | "AUTH_DIAG";
+  | "AUTH_DIAG"
+  | "KEYBOARD_STATE";
 
 export type BridgeMessage<T = unknown> = {
   type: BridgeMessageType;
@@ -104,4 +105,17 @@ export type AuthDiagPayload = {
   source: string;
   diagId: string;
   meta?: Record<string, unknown>;
+};
+
+export type KeyboardBridgeState =
+  | "will-show"
+  | "did-show"
+  | "will-hide"
+  | "did-hide";
+
+export type KeyboardStatePayload = {
+  v: 1;
+  state: KeyboardBridgeState;
+  height: number;
+  duration: number;
 };
