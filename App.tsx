@@ -18,12 +18,14 @@ import { useForegroundResumeDiag } from '@/shared/lib/auth-diag';
 import { useCookieSnapshotTimer } from '@/shared/lib/cookie-diag';
 import { useWebViewNavState } from '@/features/webview-nav-state';
 import { useAndroidBackHandler } from '@/features/android-back';
+import { useKeyboardBridge } from '@/features/keyboard-bridge';
 import { MainWebView } from '@/widgets/main-webview';
 
 function AppContent() {
   const insets = useSafeAreaInsets();
   const webViewRef = useRef<WebView>(null);
   const { onMessage, sendToWebView } = useBridge({ webViewRef });
+  useKeyboardBridge(sendToWebView);
   const { handleSocialLogin } = useSocialAuth({
     webViewRef,
     sendToWebView,
