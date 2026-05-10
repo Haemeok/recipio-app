@@ -22,7 +22,23 @@
       "Bash(npm view:*)",
       "Bash(git ls-tree *)",
       "Bash(npx --prefix \"C:/Users/user/Desktop/recipio/Capstone-frontend\" tsc --noEmit -p \"C:/Users/user/Desktop/recipio/Capstone-frontend/tsconfig.json\")",
-      "Bash(git reset *)"
+      "Bash(git reset *)",
+      "Bash(git show *)",
+      "Bash(git *)",
+      "WebSearch",
+      "Bash(gh api *)",
+      "Bash(gh search *)",
+      "Bash(npm search *)",
+      "Bash(echo \"WebView hits: $?\")",
+      "Bash(npx eslint *)",
+      "Bash(node *)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(grep -E \"\\\\.\\(ts|tsx|js|jsx\\)$\")",
+      "Bash(npm --prefix \"C:/Users/user/Desktop/recipio/Capstone-frontend\" run lint)",
+      "Bash(npx prettier *)",
+      "Bash(npx --prefix \"C:/Users/user/Desktop/recipio-app\" tsc --noEmit -p \"C:/Users/user/Desktop/recipio-app\")",
+      "Bash(npm --prefix \"C:/Users/user/Desktop/recipio/Capstone-frontend\" run typecheck)",
+      "Bash(npx --prefix \"C:/Users/user/Desktop/recipio/Capstone-frontend\" tsc --noEmit -p \"C:/Users/user/Desktop/recipio/Capstone-frontend\")"
     ]
   }
 }
